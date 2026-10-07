@@ -18,7 +18,7 @@ export const PULLDOWN_FEATURES = {
   bottom_pause_s: "Time held at the bottom",
   eccentric_s: "Time to return the bar to the top (95%–5% of travel)",
   wrist_height_asymmetry_m: "Largest left-right wrist height difference (bar tilt)",
-  elbow_flexion_asymmetry_deg: "Largest left-right elbow flexion difference",
+  elbow_flexion_asymmetry_deg: "Left-right elbow flexion difference, averaged over the bottom of the rep",
   peak_wrist_speed_mps: "Fastest wrist speed during the pull",
   peak_elbow_flexion_vel_dps: "Fastest elbow flexion during the pull",
 } as const;
@@ -33,6 +33,7 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
   const t = series.timestampsMs;
   const frameAt = (ms: number) => Math.max(0, t.findIndex((x) => x >= ms));
   const concentric = phase(rep, "concentric");
+  const bottom = phase(rep, "bottom_pause");
   const cFrom = frameAt(concentric.startMs);
   const cTo = frameAt(concentric.endMs);
   const both = (stat: (xs: number[]) => number, name: string) => mean([stat(m(`left_${name}`)), stat(m(`right_${name}`))]);
@@ -56,10 +57,11 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
     trunk_lean_peak_vel_dps: max(m("trunk_lean_vel_dps").map(Math.abs)),
     shoulder_depression_ratio: mean([gapChange("left"), gapChange("right")]),
     concentric_s: seconds(concentric),
-    bottom_pause_s: seconds(phase(rep, "bottom_pause")),
+    bottom_pause_s: seconds(bottom),
     eccentric_s: seconds(phase(rep, "eccentric")),
     wrist_height_asymmetry_m: max(m("wrist_height_diff_m").map(Math.abs)),
-    elbow_flexion_asymmetry_deg: max(m("elbow_flexion_diff_deg").map(Math.abs)),
+    // Averaged over the bottom pause rather than a frame-by-frame max, which mostly measures depth noise.
+    elbow_flexion_asymmetry_deg: Math.abs(mean(m("elbow_flexion_diff_deg", frameAt(bottom.startMs), frameAt(bottom.endMs)))),
     peak_wrist_speed_mps: max([...m("left_wrist_speed_mps", cFrom, cTo), ...m("right_wrist_speed_mps", cFrom, cTo)]),
     peak_elbow_flexion_vel_dps: max([...m("left_elbow_flexion_vel_dps", cFrom, cTo), ...m("right_elbow_flexion_vel_dps", cFrom, cTo)]),
   };

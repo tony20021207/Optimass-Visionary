@@ -1,7 +1,9 @@
 // Synthetic lat pulldown clips: a 3D stick figure posed in MediaPipe's 33-landmark layout.
 // These exist to exercise the math and to try out parameter values. They are NOT recordings and NOT a clinical
 // reference: every body dimension and motion value below is a made-up default chosen to look like a plausible rep.
-import { POSE_LANDMARK_NAMES, PoseSequence, type CameraView, type PoseLandmarkName } from "@optimass/types";
+import { POSE_LANDMARK_NAMES, type PoseLandmarkName, type PoseSequence } from "@optimass/types";
+import { standardExerciseCamera, type CameraPlacement } from "../camera";
+import { renderSequence, type Body } from "../synth-render";
 import { add, cross, dist, norm, rejectFrom, scale, sub, unit, v, type Vec3 } from "../vec3";
 
 /** How one synthetic set moves. Times are seconds, distances meters, angles degrees. */
@@ -79,7 +81,6 @@ const BODY = {
 };
 
 const FPS = 30;
-const IMAGE = { width: 720, height: 1280 };
 
 const rad = (d: number) => (d * Math.PI) / 180;
 const ease = (p: number) => (1 - Math.cos(Math.PI * Math.min(1, Math.max(0, p)))) / 2;
@@ -102,11 +103,9 @@ export function clipSeconds(p: PulldownProfile): number {
   return p.leadS + p.reps * (p.concentricS + p.bottomPauseS + p.eccentricS + p.topPauseS) + 0.3;
 }
 
-/**
- * Body frame: l = toward the lifter's left, u = up, f = forward (the way the lifter faces). Origin at the hip midpoint.
- * The lifter sits with thighs horizontal under the knee pad and the cable straight overhead.
- */
-type Body = Record<PoseLandmarkName, Vec3>;
+// Body frame: x = toward the lifter's left, y = up, z = forward (the way the lifter faces). Origin at the hip midpoint.
+// The lifter sits with thighs horizontal under the knee pad and the cable straight overhead.
+
 
 /** Two-link arm: elbow position for a shoulder and wrist, bending toward `pole`. Clamps unreachable targets. */
 function solveElbow(shoulder: Vec3, wrist: Vec3, pole: Vec3): { elbow: Vec3; wrist: Vec3 } {
@@ -190,73 +189,26 @@ export function poseAt(prog: number, p: PulldownProfile): Body {
   return pose;
 }
 
-/** Body frame → MediaPipe world axes (x = image right, y = down, z = away from the camera). */
-function toWorld(b: Vec3, view: CameraView): Vec3 {
-  // frontal: lifter faces the camera, so their left is image right. sagittal: faces image right, left side nearest.
-  return view === "frontal" ? v(b.x, -b.y, -b.z) : v(b.z, -b.y, -b.x);
-}
-
-function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function gaussian(rand: () => number): number {
-  const u = Math.max(rand(), 1e-12);
-  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand());
-}
-
-const r5 = (n: number) => Math.round(n * 1e5) / 1e5;
+/** Seated: hip midpoint height above the floor, and the lifter's waist (camera) height. */
+export const PULLDOWN_HIP_HEIGHT_M = 0.5;
+export const PULLDOWN_WAIST_HEIGHT_M = 0.65;
 
 /** Builds a PoseSequence (33 image + 33 world landmarks per frame) for a synthetic pulldown set. */
 export function synthesizePulldown(
   profile: PulldownProfile,
-  options: { cameraView?: CameraView; id?: string } = {},
+  options: { camera?: CameraPlacement; id?: string } = {},
 ): PoseSequence {
-  const view = options.cameraView ?? "frontal";
-  const rand = mulberry32(profile.seed);
-  const n = Math.round(clipSeconds(profile) * FPS);
-  const frameHeightM = 2.0;
-  const frames = [];
-  for (let i = 0; i < n; i++) {
-    const pose = poseAt(barProgressAt(i / FPS, profile), profile);
-    const world = POSE_LANDMARK_NAMES.map((name) => {
-      const w = toWorld(pose[name], view);
-      const jitter = () => gaussian(rand) * profile.noiseM;
-      return add(w, v(jitter(), jitter(), jitter()));
-    });
-    const visibility = (name: PoseLandmarkName) => (view === "sagittal" && name.startsWith("right_") ? 0.6 : 0.95);
-    frames.push({
-      frameIndex: i,
-      timestampMs: Math.round((i * 1000) / FPS),
-      landmarks: world.map((w, k) => ({
-        x: r5(0.5 + w.x / (frameHeightM * (IMAGE.width / IMAGE.height))),
-        y: r5(0.62 + w.y / frameHeightM),
-        z: r5(w.z / frameHeightM),
-        visibility: visibility(POSE_LANDMARK_NAMES[k]!),
-      })),
-      worldLandmarks: world.map((w, k) => ({
-        x: r5(w.x),
-        y: r5(w.y),
-        z: r5(w.z),
-        visibility: visibility(POSE_LANDMARK_NAMES[k]!),
-      })),
-    });
-  }
-  return PoseSequence.parse({
-    id: options.id ?? `synthetic-lat-pulldown-${view}`,
+  const camera = options.camera ?? standardExerciseCamera(PULLDOWN_WAIST_HEIGHT_M);
+  return renderSequence({
+    id: options.id ?? `synthetic-lat-pulldown-az${camera.azimuthDeg}`,
     exerciseId: "lat_pulldown",
-    cameraView: view,
     fps: FPS,
-    image: IMAGE,
-    source: "fixture",
-    frames,
+    frameCount: Math.round(clipSeconds(profile) * FPS),
+    poseAtFrame: (i) => poseAt(barProgressAt(i / FPS, profile), profile),
+    camera,
+    hipHeightM: PULLDOWN_HIP_HEIGHT_M,
+    noiseM: profile.noiseM,
+    seed: profile.seed,
   });
 }
 

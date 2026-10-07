@@ -1,9 +1,10 @@
-import { RepSegment } from "@optimass/types";
+import { POSE_LANDMARK_NAMES, RepSegment } from "@optimass/types";
 import { describe, expect, it } from "vitest";
 import { analyzeKinematics } from "../index";
 import {
   DEFAULT_PULLDOWN_PARAMS,
   GOOD_PULLDOWN,
+  PULLDOWN_WAIST_HEIGHT_M,
   PULLDOWN_VARIANTS,
   analyzePulldown,
   parsePulldownParams,
@@ -13,8 +14,10 @@ import {
   type PulldownVariant,
 } from "./index";
 
-const clip = (variant: PulldownVariant, cameraView: "frontal" | "sagittal" = "frontal") =>
-  synthesizePulldown(PULLDOWN_VARIANTS[variant], { cameraView });
+/** Camera azimuths: 135 = the standard 45° behind-left view, 0 = front, 90 = left side, 225 = behind-right. */
+const AZIMUTHS = [135, 225, 0, 90] as const;
+const at = (azimuthDeg: number) => ({ azimuthDeg, heightM: PULLDOWN_WAIST_HEIGHT_M, distanceM: 3 });
+const clip = (variant: PulldownVariant, azimuthDeg = 135) => synthesizePulldown(PULLDOWN_VARIANTS[variant], { camera: at(azimuthDeg) });
 
 describe("synthetic pulldown clips", () => {
   it("keep segment lengths constant (a rigid stick figure)", () => {
@@ -25,12 +28,28 @@ describe("synthetic pulldown clips", () => {
     }
   });
 
-  it("give the same 3D angles from a front or side camera", () => {
+  it("give the same 3D angles from any camera position", () => {
     const quiet = { ...GOOD_PULLDOWN, noiseM: 0 };
-    const front = pulldownSeries(synthesizePulldown(quiet, { cameraView: "frontal" })).metrics;
-    const side = pulldownSeries(synthesizePulldown(quiet, { cameraView: "sagittal" })).metrics;
-    for (const name of ["left_elbow_flexion_deg", "right_humerothoracic_elevation_deg", "trunk_lean_deg"]) {
-      front[name]!.forEach((x, i) => expect(side[name]![i]).toBeCloseTo(x, 1));
+    const reference = pulldownSeries(synthesizePulldown(quiet, { camera: at(135) })).metrics;
+    for (const az of AZIMUTHS) {
+      const other = pulldownSeries(synthesizePulldown(quiet, { camera: at(az) })).metrics;
+      for (const name of ["left_elbow_flexion_deg", "right_humerothoracic_elevation_deg", "trunk_lean_deg", "wrist_mid_height_m"]) {
+        reference[name]!.forEach((x, i) => expect(other[name]![i]).toBeCloseTo(x, 1));
+      }
+    }
+  });
+
+  it("use the standard 45° behind-left camera by default, with the far side less visible", () => {
+    const seq = synthesizePulldown(GOOD_PULLDOWN);
+    const f = seq.frames[0]!;
+    const vis = (name: string) => f.worldLandmarks[POSE_LANDMARK_NAMES.indexOf(name as never)]!.visibility;
+    expect(vis("left_shoulder")).toBeGreaterThan(vis("right_shoulder"));
+    expect(vis("nose")).toBeLessThan(0.5); // filmed from behind
+    for (const lm of f.landmarks) {
+      expect(lm.x).toBeGreaterThan(0);
+      expect(lm.x).toBeLessThan(1);
+      expect(lm.y).toBeGreaterThan(0);
+      expect(lm.y).toBeLessThan(1);
     }
   });
 });
@@ -71,9 +90,9 @@ describe("placeholder parameters vs synthetic reps", () => {
     return new Set(reps.flatMap((r) => r.checks.filter((c) => c.status === "fail").map((c) => c.fault)));
   };
 
-  it("the good rep passes every check, from either camera", () => {
-    for (const view of ["frontal", "sagittal"] as const) {
-      const { reps } = analyzePulldown(clip("good", view));
+  it("the good rep passes every check, from any camera position", () => {
+    for (const az of AZIMUTHS) {
+      const { reps } = analyzePulldown(clip("good", az));
       for (const r of reps) expect(r.checks.filter((c) => c.status === "fail")).toEqual([]);
     }
   });
