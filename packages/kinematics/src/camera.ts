@@ -46,9 +46,9 @@ export function toWorldLandmark(p: Vec3, basis: CameraBasis): Vec3 {
   return v(dot(p, basis.right), -dot(p, basis.up), dot(p, basis.look));
 }
 
-/** Pinhole projection to MediaPipe's normalized image landmarks for a portrait phone (60° vertical field of view). */
+/** Pinhole projection to MediaPipe's normalized image landmarks for a portrait phone (protocol's vertical field of view). */
 export function toImageLandmark(p: Vec3, basis: CameraBasis, image: { width: number; height: number }): Vec3 {
-  const fy = 0.5 / Math.tan(rad(30));
+  const fy = 0.5 / Math.tan(rad(CAPTURE_PROTOCOL.phone.verticalFovDeg / 2));
   const fx = fy * (image.height / image.width);
   const rel = sub(p, basis.position);
   const depth = Math.max(0.1, dot(rel, basis.look));

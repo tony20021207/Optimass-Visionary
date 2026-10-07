@@ -1,6 +1,10 @@
 {
-  "$comment": "How OptiMass expects clips to be filmed. Decided by Tony (2026-10-07). Synthetic clips, tests and the capture UI all read this file. Distances are meters, angles degrees.",
+  "$comment": "How OptiMass expects clips to be filmed. Decided by Tony (2026-10-07): exercises at 45 degrees rear-side, posture check straight-on from 4 sides at a set distance and height. Synthetic clips, tests and the capture UI all read this file. Distances are meters, angles degrees.",
   "version": "0.1.0",
+  "phone": {
+    "verticalFovDeg": 69,
+    "note": "Typical 1x phone camera (about 26 mm equivalent) held in portrait. Used to place synthetic cameras and check framing; real phones vary."
+  },
   "exercise": {
     "label": "Standard exercise view: 45° behind and to one side",
     "azimuthDeg": 135,
@@ -11,15 +15,30 @@
     "exceptions": []
   },
   "postureScreen": {
-    "label": "Standing posture check before analysis",
+    "label": "Standing posture check before analysis: straight-on (90°) views",
     "views": [
-      { "id": "anterior", "azimuthDeg": 0 },
-      { "id": "posterior", "azimuthDeg": 180 },
-      { "id": "left", "azimuthDeg": 90 },
-      { "id": "right", "azimuthDeg": 270 }
+      {
+        "id": "anterior",
+        "azimuthDeg": 0
+      },
+      {
+        "id": "posterior",
+        "azimuthDeg": 180
+      },
+      {
+        "id": "left",
+        "azimuthDeg": 90
+      },
+      {
+        "id": "right",
+        "azimuthDeg": 270
+      }
     ],
     "holdSeconds": 3,
-    "cameraHeight": "waist",
+    "distanceBodyHeights": 1,
+    "distanceNote": "Camera exactly 1 x the user's height away (e.g. 1.75 m for a 1.75 m user), measured floor-to-floor from the lens to the user's feet. A known distance and height let us convert image measurements to real units and correct perspective.",
+    "cameraHeight": "hip",
+    "cameraHeightNote": "Lens at the user's hip height (mid-body), camera level. Centring the lens on the body keeps head and feet at similar angles to it, so perspective distortion is lowest and the whole body fits at 1 body height with a normal (1x) phone lens. Shoulder height at this distance cuts off the feet.",
     "stanceNote": "Relaxed standing, feet hip-width, arms by the sides, looking straight ahead."
   }
 }

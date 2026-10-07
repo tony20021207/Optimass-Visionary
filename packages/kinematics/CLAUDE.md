@@ -21,7 +21,8 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
 - Source of truth: `src/capture-protocol.json`, read through `src/camera.ts`.
 - Every exercise is filmed from 45° behind and to one side (azimuth 135° = behind-left, 225° = behind-right),
   lens at the lifter's waist height in the exercise position, camera level. Whole body incl. hands in frame.
-- Before analysis, a standing posture check is captured from the front, back, left and right (`src/posture/`).
+- Before analysis, a standing posture check is captured straight-on from the front, back, left and right, 1 body height
+  away with the lens at hip height (`src/posture/`, `postureCamera`).
   Sagittal posture features use the side views, frontal features the front/back views.
 - Metrics are computed in 3D world coordinates, so they do not depend on the view; the view changes which
   landmarks are visible and how much depth noise each metric picks up.

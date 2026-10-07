@@ -22,7 +22,8 @@ Full plan: docs/plan.md (modules M0–M10, lanes L1–L4, phases).
 ## Capture protocol (core setting)
 - Every exercise is filmed from 45° behind and to one side (posterolateral), lens at the lifter's waist height in the
   exercise position, camera level, whole body including the hands in frame. Record which side was filmed.
-- Before any exercise analysis, the user does a standing posture check filmed from the front, back, left and right.
+- Before any exercise analysis, the user does a standing posture check filmed straight-on (90°) from the front, back,
+  left and right: camera 1 body height away, lens at hip height, level.
 - Source of truth: `packages/kinematics/src/capture-protocol.json`. Tier 1 rules, synthetic fixtures and the capture
   UI read it; do not hard-code camera placement elsewhere.
 

@@ -20,6 +20,17 @@ describe("posture screen", () => {
     expect(captures[0]!.sequence.frames).toHaveLength(CAPTURE_PROTOCOL.postureScreen.holdSeconds * 30);
   });
 
+  it("keeps the whole body in frame at the protocol distance and height", () => {
+    for (const { sequence } of synthesizePostureScreen(NEUTRAL_POSTURE)) {
+      for (const lm of sequence.frames[0]!.landmarks) {
+        expect(lm.y).toBeGreaterThan(0);
+        expect(lm.y).toBeLessThan(1);
+        expect(lm.x).toBeGreaterThan(0);
+        expect(lm.x).toBeLessThan(1);
+      }
+    }
+  });
+
   it("measures the same posture from every view when there is no noise", () => {
     const captures = synthesizePostureScreen({ ...POSTURE_VARIANTS.knee_valgus, forwardHeadM: 0.05, noiseM: 0 });
     const [first, ...rest] = captures.map((c) => postureFeatures(c.sequence));

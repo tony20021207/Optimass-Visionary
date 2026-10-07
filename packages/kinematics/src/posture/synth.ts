@@ -46,6 +46,8 @@ export type PostureVariant = keyof typeof POSTURE_VARIANTS;
 
 export const STANDING_HIP_HEIGHT_M = 0.94;
 export const STANDING_WAIST_HEIGHT_M = 1.0;
+/** Synthetic body's standing height: hips + hip-to-ear + a placeholder ear-to-crown offset. */
+export const SYNTH_STATURE_M = STANDING_HIP_HEIGHT_M + 0.7 + 0.12;
 const THIGH = 0.43;
 const SHIN = 0.43; // same body as the synthetic pulldown lifter, so one calibration fits both
 const rad = (d: number) => (d * Math.PI) / 180;
@@ -96,11 +98,16 @@ export interface PostureCapture {
   sequence: PoseSequence;
 }
 
+/** Camera for one posture view per the protocol: hip height, 1 body height away. */
+export function postureCamera(azimuthDeg: number, statureM = SYNTH_STATURE_M, hipHeightM = STANDING_HIP_HEIGHT_M): CameraPlacement {
+  return { azimuthDeg, heightM: hipHeightM, distanceM: CAPTURE_PROTOCOL.postureScreen.distanceBodyHeights * statureM };
+}
+
 /** One still capture per protocol view (front, back, left, right), each `holdSeconds` long. */
 export function synthesizePostureScreen(profile: PostureProfile, fps = 30): PostureCapture[] {
   const pose = standingPose(profile);
   return CAPTURE_PROTOCOL.postureScreen.views.map((view, k) => {
-    const camera: CameraPlacement = { azimuthDeg: view.azimuthDeg, heightM: STANDING_WAIST_HEIGHT_M, distanceM: 3 };
+    const camera = postureCamera(view.azimuthDeg);
     return {
       view: view.id,
       sequence: renderSequence({
