@@ -74,6 +74,7 @@ function landmarkTracks(seq: PoseSequence, window: number): Record<PoseLandmarkN
  * - `head_forward_m`: ear midpoint ahead of the shoulder midpoint, perpendicular to the trunk (0 = ears in line
  *   with the trunk). Uses the ears, which stay visible from behind.
  * - `wrist_mid_height_m`: wrist midpoint height above the shoulder midpoint (bar-height proxy).
+ * - `grip_width_x_shoulder`: wrist-to-wrist distance ÷ shoulder-to-shoulder distance (hand spacing on the bar).
  * - `wrist_height_diff_m`: left wrist height minus right (bar tilt).
  * - `elbow_flexion_diff_deg`: left minus right elbow flexion.
  * - `<angle>_vel_dps`: time derivative of each angle above.
@@ -106,6 +107,7 @@ export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): 
     const down = unit(trunkDown);
     const trunkFwd = unit(rejectFrom(forward, down));
     const leftward = unit(rejectFrom(rejectFrom(sub(p("left_shoulder"), p("right_shoulder")), down), trunkFwd));
+    put("grip_width_x_shoulder", i, dist(p("left_wrist"), p("right_wrist")) / shoulderWidth);
     for (const side of ["left", "right"] as const) {
       const shoulder = p(`${side}_shoulder`);
       const elbow = p(`${side}_elbow`);

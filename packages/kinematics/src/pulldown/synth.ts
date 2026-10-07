@@ -33,10 +33,10 @@ export interface PulldownProfile {
   shoulderElevationTopM: number;
   shoulderElevationBottomM: number;
   /**
-   * Half the distance between the hands on the bar (m). Wide overhand ≈ 0.46 (≈ 92 cm between hands), close ≈ 0.22.
-   * For a given bar depth a wider grip needs less elbow bend.
+   * Hand spacing on the bar as a multiple of shoulder width (wrist to wrist ÷ shoulder to shoulder).
+   * Default overhand grip 2.0× (Tony, 2026-10-07); close grip ≈ 1.1×. For a given bar depth a wider grip needs less elbow bend.
    */
-  gripHalfWidthM: number;
+  gripWidthXShoulder: number;
   /** Where the elbows point as they bend: 0 = out to the sides, 1 = forward. Moves the pull from adduction to extension. */
   elbowsForward: number;
   /** Head (ears) drifts this far forward of the shoulders, perpendicular to the trunk, as the bar comes down. */
@@ -58,11 +58,11 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   trunkLeanDeg: 12,
   trunkSwingDeg: 4,
   topElbowFlexionDeg: 15,
-  bottomElbowFlexionDeg: 110,
+  bottomElbowFlexionDeg: 120,
   bottomHumerusBehindDeg: 5,
   shoulderElevationTopM: 0.03,
   shoulderElevationBottomM: -0.02,
-  gripHalfWidthM: 0.46,
+  gripWidthXShoulder: 2.0,
   elbowsForward: 0,
   headForwardM: 0,
   rightHandLagM: 0,
@@ -84,7 +84,7 @@ export const PULLDOWN_VARIANTS = {
   /** Bar is let go on the way up instead of being lowered under control. */
   fast_eccentric: { ...GOOD_PULLDOWN, eccentricS: 0.5, seed: 5 },
   /** Closer grip with the elbows travelling in front of the body: more shoulder extension, less adduction. */
-  elbows_forward: { ...GOOD_PULLDOWN, gripHalfWidthM: 0.22, elbowsForward: 1, bottomElbowFlexionDeg: 145, seed: 8 },
+  elbows_forward: { ...GOOD_PULLDOWN, gripWidthXShoulder: 1.1, elbowsForward: 1, bottomElbowFlexionDeg: 145, seed: 8 },
   /** Chin pokes forward as the bar comes down. */
   forward_head: { ...GOOD_PULLDOWN, headForwardM: 0.06, seed: 7 },
   /** Right arm finishes short of the left. */
@@ -145,6 +145,8 @@ function solveElbow(shoulder: Vec3, wrist: Vec3, pole: Vec3): { elbow: Vec3; wri
   return { elbow: add(add(shoulder, scale(u, x)), scale(side, r)), wrist: w };
 }
 
+const gripHalfWidth = (p: PulldownProfile) => p.gripWidthXShoulder * BODY.shoulderHalfWidth;
+
 function shoulderMidAt(leanDeg: number): Vec3 {
   return v(0, BODY.trunk * Math.cos(rad(leanDeg)), -BODY.trunk * Math.sin(rad(leanDeg)));
 }
@@ -182,7 +184,7 @@ export function barBottomFor(p: PulldownProfile): BarBottom {
   const endLean = p.trunkLeanDeg + p.trunkSwingDeg;
   const endAxis = unit(shoulderMidAt(endLean));
   const shoulder = add(shoulderMidAt(endLean), scale(endAxis, p.shoulderElevationBottomM));
-  const lateral = p.gripHalfWidthM - BODY.shoulderHalfWidth;
+  const lateral = gripHalfWidth(p) - BODY.shoulderHalfWidth;
   const d = reachForFlexion(p.bottomElbowFlexionDeg);
   const r = Math.sqrt(Math.max(1e-6, d * d - lateral * lateral));
   const at = (phiDeg: number): BarBottom => ({ u: shoulder.y + r * Math.cos(rad(phiDeg)), f: shoulder.z + r * Math.sin(rad(phiDeg)) });
@@ -227,7 +229,7 @@ function poseWithBar(prog: number, p: PulldownProfile, bottom: BarBottom): Body 
   // The bar then travels in a straight line to the solved bottom position.
   const startShoulder = add(shoulderMidAt(p.trunkLeanDeg), scale(unit(shoulderMidAt(p.trunkLeanDeg)), p.shoulderElevationTopM));
   const topF = startShoulder.z + BODY.barAheadOfShoulders;
-  const lateral = p.gripHalfWidthM - BODY.shoulderHalfWidth;
+  const lateral = gripHalfWidth(p) - BODY.shoulderHalfWidth;
   const reach = reachForFlexion(p.topElbowFlexionDeg) * 0.999;
   const topU = startShoulder.y + Math.sqrt(Math.max(0, reach ** 2 - lateral ** 2 - BODY.barAheadOfShoulders ** 2));
   const barU = topU + (bottom.u - topU) * prog;
@@ -237,7 +239,7 @@ function poseWithBar(prog: number, p: PulldownProfile, bottom: BarBottom): Body 
   for (const [side, s] of [["left", 1], ["right", -1]] as const) {
     const shoulder = add(shoulderMid, scale(L, s * BODY.shoulderHalfWidth));
     const lag = side === "right" ? p.rightHandLagM * prog : 0;
-    const wristTarget = v(s * p.gripHalfWidthM, barU + lag, barF);
+    const wristTarget = v(s * gripHalfWidth(p), barU + lag, barF);
     // Elbows bend toward the pole: out, down and slightly back by default; forward as elbowsForward → 1.
     const k = p.elbowsForward;
     const pole = add(add(scale(L, s * (1 - k)), scale(U, -1)), scale(F, -0.3 + 1.3 * k));
