@@ -18,6 +18,7 @@ export const PULLDOWN_FEATURES = {
   concentric_s: "Time to pull the bar down (5%–95% of travel)",
   bottom_pause_s: "Time held at the bottom",
   eccentric_s: "Time to return the bar to the top (95%–5% of travel)",
+  top_pause_s: "Time held at the top (arms overhead) before the next pull. The last rep's pause is cut short by the clip end.",
   wrist_height_asymmetry_m: "Largest left-right wrist height difference (bar tilt)",
   elbow_flexion_asymmetry_deg: "Left-right elbow flexion difference, averaged over the bottom of the rep",
   peak_wrist_speed_mps: "Fastest wrist speed during the pull",
@@ -61,6 +62,7 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
     concentric_s: seconds(concentric),
     bottom_pause_s: seconds(bottom),
     eccentric_s: seconds(phase(rep, "eccentric")),
+    top_pause_s: seconds(phase(rep, "lockout")),
     wrist_height_asymmetry_m: max(m("wrist_height_diff_m").map(Math.abs)),
     // Averaged over the bottom pause rather than a frame-by-frame max, which mostly measures depth noise.
     elbow_flexion_asymmetry_deg: Math.abs(mean(m("elbow_flexion_diff_deg", frameAt(bottom.startMs), frameAt(bottom.endMs)))),

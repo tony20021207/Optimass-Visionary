@@ -103,6 +103,7 @@
     },
     { "id": "concentric_time", "feature": "concentric_s", "why": "Reported only.", "placeholder": true },
     { "id": "bottom_pause_time", "feature": "bottom_pause_s", "why": "Reported only.", "placeholder": true },
+    { "id": "top_pause_time", "feature": "top_pause_s", "why": "Reported only. Add a min to require a stretch pause at the top.", "placeholder": true },
     { "id": "peak_wrist_speed", "feature": "peak_wrist_speed_mps", "why": "Reported only.", "placeholder": true },
     { "id": "peak_elbow_flexion_velocity", "feature": "peak_elbow_flexion_vel_dps", "why": "Reported only.", "placeholder": true }
   ]
