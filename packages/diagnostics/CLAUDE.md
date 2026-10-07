@@ -8,3 +8,8 @@ Three-tier diagnostic engine: Tier 1 kinematic errors, Tier 2 ranked root-cause 
 - May import: `@optimass/types`, `@optimass/anatomy-kb`, `@optimass/exercise-rating`. Nothing from apps/web or other lanes' packages not listed here.
 - Tests: `pnpm --filter @optimass/diagnostics test`. Use fixtures from `@optimass/types/fixtures`, not live services.
 - Clinical values (thresholds, weights, norms, dosages) come from content/, authored by Tony. Never hard-code them.
+
+## Tier 2 (M6b), lat pulldown first
+- Engine: `src/tier2/` (`schema.ts` = YAML shape, `infer.ts` = noisy-OR scoring + ranking). Data: `content/rules/tier2/<exerciseId>.yaml`.
+- `parseTier2Rules` takes file texts (no fs), so the package stays browser-safe; put the result on `RuleSet.tier2`.
+- Pulldown Tier 1 findings fixtures live in `src/tier2/fixtures` until Tier 1 emits real ones. Error codes they use are declared in the YAML's `errorCodes`.

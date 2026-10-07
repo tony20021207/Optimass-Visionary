@@ -1,0 +1,71 @@
+[
+  {
+    "id": "f1",
+    "ruleId": "lat_pulldown_lumbar_hyperextension",
+    "exerciseId": "lat_pulldown",
+    "errorCode": "lumbar_hyperextension",
+    "label": "Lower back arches as the arms reach overhead (PLACEHOLDER)",
+    "requiredView": "sagittal",
+    "severity": "moderate",
+    "side": "bilateral",
+    "repIndices": [
+      0,
+      1,
+      2
+    ],
+    "evidence": [
+      {
+        "metric": "lumbar_extension_at_top_deg",
+        "value": 0,
+        "threshold": 0,
+        "unit": "deg"
+      }
+    ],
+    "confidence": 0.8
+  },
+  {
+    "id": "f2",
+    "ruleId": "lat_pulldown_incomplete_top_rom",
+    "exerciseId": "lat_pulldown",
+    "errorCode": "incomplete_top_rom",
+    "label": "Arms don't reach full overhead extension at the top (PLACEHOLDER)",
+    "requiredView": "sagittal",
+    "severity": "minor",
+    "side": "bilateral",
+    "repIndices": [
+      1,
+      2
+    ],
+    "evidence": [
+      {
+        "metric": "shoulder_flexion_at_top_deg",
+        "value": 0,
+        "threshold": 0,
+        "unit": "deg"
+      }
+    ],
+    "confidence": 0.7
+  },
+  {
+    "id": "f3",
+    "ruleId": "lat_pulldown_excessive_torso_lean",
+    "exerciseId": "lat_pulldown",
+    "errorCode": "excessive_torso_lean",
+    "label": "Torso leans back past the set-up angle (PLACEHOLDER)",
+    "requiredView": "sagittal",
+    "severity": "minor",
+    "side": "bilateral",
+    "repIndices": [
+      2
+    ],
+    "evidence": [
+      {
+        "metric": "torso_lean_change_deg",
+        "value": 0,
+        "threshold": 0,
+        "unit": "deg"
+      }
+    ],
+    "confidence": 0.6
+  }
+]
