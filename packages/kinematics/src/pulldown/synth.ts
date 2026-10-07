@@ -244,7 +244,9 @@ interface BarTravel {
   /** Forearm break off the cable line at the bottom (degrees), solved from bottomArmElevationDeg. */
   breakDeg: number;
 }
-const barCache = new WeakMap<PulldownProfile, BarTravel>();
+// Keyed by the profile's values, not the object: callers (Motion Lab's sliders) edit profiles in place.
+const barCache = new Map<string, BarTravel>();
+const BAR_CACHE_MAX = 64;
 
 /** Upper arm angle from the trunk's downward axis (0 = arm against the side), left arm, body frame. */
 function armElevationDeg(pose: Body, leanDeg: number): number {
@@ -286,8 +288,10 @@ function stopOnLine(p: PulldownProfile, top: number, breakDeg: number, endLean: 
  * arms finish at `bottomArmElevationDeg`.
  */
 export function barTravelFor(p: PulldownProfile): BarTravel {
-  const cached = barCache.get(p);
+  const key = JSON.stringify(p);
+  const cached = barCache.get(key);
   if (cached) return cached;
+  if (barCache.size >= BAR_CACHE_MAX) barCache.clear();
   const startShoulder = add(shoulderMidAt(p.trunkLeanDeg), scale(unit(shoulderMidAt(p.trunkLeanDeg)), p.shoulderElevationTopM));
   const leftShoulder = add(startShoulder, v(BODY.shoulderHalfWidth, 0, 0));
   const grip = v(gripHalfWidth(p), 0, 0);
@@ -304,7 +308,7 @@ export function barTravelFor(p: PulldownProfile): BarTravel {
   const bottomFor = (breakDeg: number) => stopOnLine(p, top, breakDeg, endLean);
   if (!p.forearmOnLine) {
     const travel = { top, bottom: bottomFor(0), breakDeg: 0 };
-    barCache.set(p, travel);
+    barCache.set(key, travel);
     return travel;
   }
   // More forearm break → the elbow reaches the stop point sooner, with the arms higher. Bisect the break that lands the
@@ -322,7 +326,7 @@ export function barTravelFor(p: PulldownProfile): BarTravel {
     breakDeg = (blo + bhi) / 2;
   }
   const travel = { top, bottom: bottomFor(breakDeg), breakDeg };
-  barCache.set(p, travel);
+  barCache.set(key, travel);
   return travel;
 }
 

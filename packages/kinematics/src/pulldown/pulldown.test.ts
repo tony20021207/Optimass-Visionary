@@ -141,6 +141,13 @@ describe("placeholder parameters vs synthetic reps", () => {
     }
   });
 
+  it("follows a profile edited in place (Motion Lab sliders)", () => {
+    const profile = { ...PULLDOWN_VARIANTS.good };
+    const before = barTravelFor(profile).bottom;
+    profile.bottomHumerusBehindDeg = 25;
+    expect(barTravelFor(profile).bottom).not.toBeCloseTo(before, 3);
+  });
+
   it("rejects malformed parameter files", () => {
     expect(() => parsePulldownParams({ exerciseId: "lat_pulldown", checks: [{ id: "x", feature: "nope" }] })).toThrow(/unknown feature/);
     expect(() =>
