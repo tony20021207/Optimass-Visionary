@@ -1,4 +1,4 @@
-// Compares per-rep features to the editable parameter file. A prototype of what M6a will do with content/rules.
+// Tier 1 form detection: compares per-rep features to the editable parameter file. A prototype of what M6a will do with content/rules/tier1.
 import { PULLDOWN_FEATURES, type PulldownFeature, type PulldownFeatures } from "./features";
 import defaultParamsJson from "./good-pulldown.params.json";
 

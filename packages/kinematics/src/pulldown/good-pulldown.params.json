@@ -1,5 +1,5 @@
 {
-  "$comment": "DRAFT for Tony to edit. Every number is a PLACEHOLDER picked so the synthetic good rep passes and each synthetic fault fails; none is a clinical or literature value yet. Set min and/or max per check; leave both out to report the number without judging it. Feature definitions: src/pulldown/features.ts. `fault` values are Tier 1 error codes and match content/rules/tier2/lat_pulldown.yaml where that file has a code; incomplete_bottom_rom and fast_eccentric are not in it yet. Once the Tier 1 rule schema exists (M6a) this moves to content/rules/tier1/.",
+  "$comment": "Tier 1 form detection parameters for the lat pulldown. DRAFT for Tony to edit. Every number is a PLACEHOLDER picked so the synthetic good rep passes and each synthetic fault fails; none is a clinical or literature value yet. Set min and/or max per check; leave both out to report the number without judging it. Feature definitions: src/pulldown/features.ts. `fault` values are Tier 1 error codes and match content/rules/tier2/lat_pulldown.yaml where that file has a code; incomplete_bottom_rom and fast_eccentric are not in it yet. Once the Tier 1 rule schema exists (M6a) this moves to content/rules/tier1/.",
   "exerciseId": "lat_pulldown",
   "version": "0.1.0-draft",
   "reviewedBy": null,
