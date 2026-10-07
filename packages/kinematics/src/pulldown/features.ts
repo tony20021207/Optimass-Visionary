@@ -16,6 +16,9 @@ export const PULLDOWN_FEATURES = {
   humerus_behind_trunk_bottom_deg: "Upper arm angle behind the trunk line at the bottom (+ = elbows behind the body, arm rotating back around the shoulder; mean of both arms)",
   elbow_forward_bottom_m: "Elbow ahead of the shoulder at the bottom (m, + = in front of the body)",
   grip_width_x_shoulder: "Hand spacing on the bar as a multiple of shoulder width (wrist to wrist ÷ shoulder to shoulder, rep average)",
+  pull_line_deg: "Bar path angle from vertical, top of the rep to the bottom (+ = bar starts ahead and comes back toward the body)",
+  forearm_off_line_deg: "Forearm vs the bar path, seen from the side, over the first three quarters of the pull (mean absolute angle, both arms)",
+  forearm_off_line_bottom_deg: "Forearm vs the bar path at the bottom (+ = elbows dropped behind the line; mean of both arms)",
   bar_bottom_rel_shoulder_m: "Lowest wrist-midpoint height relative to the shoulders",
   trunk_lean_mean_deg: "Average trunk lean back from vertical",
   trunk_lean_range_deg: "How much the trunk lean changes within the rep",
@@ -54,6 +57,12 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
     return gap[bottomFrame]! - gap[rep.startFrame]!;
   };
   const lean = m("trunk_lean_deg");
+  const up = series.metrics.wrist_mid_up_m!;
+  const fwd = series.metrics.wrist_mid_fwd_m!;
+  const pullLine = Math.atan2(fwd[rep.startFrame]! - fwd[bottomFrame]!, up[rep.startFrame]! - up[bottomFrame]!) * (180 / Math.PI);
+  const offLine = (side: "left" | "right", i: number) => series.metrics[`${side}_forearm_pitch_deg`]![i]! - pullLine;
+  const onLineTo = rep.startFrame + Math.round((bottomFrame - rep.startFrame) * 0.75);
+  const onLineFrames = Array.from({ length: Math.max(1, onLineTo - rep.startFrame + 1) }, (_, k) => rep.startFrame + k);
   const performed = (name: string) =>
     mean((["left", "right"] as const).map((side) => {
       const cum = series.metrics[`${side}_${name}`]!;
@@ -79,6 +88,9 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
     ]),
     elbow_forward_bottom_m: mean([series.metrics.left_elbow_forward_m![bottomFrame]!, series.metrics.right_elbow_forward_m![bottomFrame]!]),
     grip_width_x_shoulder: mean(m("grip_width_x_shoulder")),
+    pull_line_deg: pullLine,
+    forearm_off_line_deg: mean(onLineFrames.flatMap((i) => [Math.abs(offLine("left", i)), Math.abs(offLine("right", i))])),
+    forearm_off_line_bottom_deg: mean([offLine("left", bottomFrame), offLine("right", bottomFrame)]),
     bar_bottom_rel_shoulder_m: min(height),
     trunk_lean_mean_deg: mean(lean),
     trunk_lean_range_deg: max(lean) - min(lean),

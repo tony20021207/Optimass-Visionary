@@ -21,8 +21,18 @@ export interface PulldownProfile {
   trunkSwingDeg: number;
   /** Elbow flexion at the top (0 = elbows locked out). */
   topElbowFlexionDeg: number;
-  /** Elbow flexion at the bottom. Together with bottomHumerusBehindDeg it sets where the bar finishes. */
-  bottomElbowFlexionDeg: number;
+  /** Pull line: the bar travels down a straight line tilted this far from vertical (top end forward). Tony: 12-15°. */
+  pullLineDeg: number;
+  /**
+   * Seen from the side, the forearm stays on the pull line until the last quarter of the pull, then tilts this far off
+   * it (+ = elbows dropping behind the line) by the bottom.
+   */
+  bottomForearmOffLineDeg: number;
+  /**
+   * Hold the forearm on the pull line (side view) as above. Off for the elbows-forward pull: with a close grip the
+   * forearm can only stay on the line by flaring the elbow out, so there the elbow just bends toward its pole.
+   */
+  forearmOnLine: boolean;
   /**
    * Where the pull stops: upper arm angle behind the trunk's frontal plane at the bottom (0 = elbow level with the
    * trunk line, + = elbow behind the body, the whole arm rotating back around the shoulder; − = elbow still in front).
@@ -58,7 +68,9 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   trunkLeanDeg: 12,
   trunkSwingDeg: 4,
   topElbowFlexionDeg: 15,
-  bottomElbowFlexionDeg: 120,
+  pullLineDeg: 13.5,
+  bottomForearmOffLineDeg: 10,
+  forearmOnLine: true,
   bottomHumerusBehindDeg: 5,
   shoulderElevationTopM: 0.03,
   shoulderElevationBottomM: -0.02,
@@ -74,17 +86,17 @@ export const GOOD_PULLDOWN: PulldownProfile = {
 export const PULLDOWN_VARIANTS = {
   good: GOOD_PULLDOWN,
   /** Torso swings back hard to start the bar moving. */
-  momentum_swing: { ...GOOD_PULLDOWN, concentricS: 0.6, trunkLeanDeg: 10, trunkSwingDeg: 28, seed: 2 },
+  momentum_swing: { ...GOOD_PULLDOWN, concentricS: 0.6, trunkLeanDeg: 10, trunkSwingDeg: 28, bottomHumerusBehindDeg: 0, seed: 2 },
   /** Elbows never straighten at the top and the bar stops around the chin. */
-  partial_rom: { ...GOOD_PULLDOWN, topElbowFlexionDeg: 50, bottomElbowFlexionDeg: 95, bottomHumerusBehindDeg: -10, seed: 3 },
+  partial_rom: { ...GOOD_PULLDOWN, topElbowFlexionDeg: 50, bottomHumerusBehindDeg: -10, seed: 3 },
   /** Shoulders ride up toward the ears instead of depressing as the bar comes down. */
   shrug: { ...GOOD_PULLDOWN, shoulderElevationTopM: 0.03, shoulderElevationBottomM: 0.05, seed: 4 },
   /** Pulls past the trunk line: the whole arm rotates back around the shoulder at the bottom (the old default). */
-  over_pull: { ...GOOD_PULLDOWN, bottomHumerusBehindDeg: 28, seed: 9 },
+  over_pull: { ...GOOD_PULLDOWN, bottomHumerusBehindDeg: 28, bottomForearmOffLineDeg: 35, seed: 9 },
   /** Bar is let go on the way up instead of being lowered under control. */
   fast_eccentric: { ...GOOD_PULLDOWN, eccentricS: 0.5, seed: 5 },
   /** Closer grip with the elbows travelling in front of the body: more shoulder extension, less adduction. */
-  elbows_forward: { ...GOOD_PULLDOWN, gripWidthXShoulder: 1.1, elbowsForward: 1, bottomElbowFlexionDeg: 145, seed: 8 },
+  elbows_forward: { ...GOOD_PULLDOWN, gripWidthXShoulder: 1.1, elbowsForward: 1, forearmOnLine: false, seed: 8 },
   /** Chin pokes forward as the bar comes down. */
   forward_head: { ...GOOD_PULLDOWN, headForwardM: 0.06, seed: 7 },
   /** Right arm finishes short of the left. */
@@ -165,57 +177,116 @@ function reachForFlexion(flexionDeg: number): number {
   return Math.sqrt(a * a + b * b + 2 * a * b * Math.cos(rad(flexionDeg)));
 }
 
-/** Bar position at the bottom in the body frame: height (y) and depth (z) of the wrists. */
-export interface BarBottom {
-  u: number;
-  f: number;
+/** Unit vector pointing up the pull line (toward the pulley): tilted pullLineDeg forward of vertical. */
+const pullDir = (p: PulldownProfile) => v(0, Math.cos(rad(p.pullLineDeg)), Math.sin(rad(p.pullLineDeg)));
+
+/** Where the bar sits on the pull line: `t` meters up the line from the point level with the starting shoulders. */
+function barOnLine(p: PulldownProfile, t: number): Vec3 {
+  const start = add(shoulderMidAt(p.trunkLeanDeg), scale(unit(shoulderMidAt(p.trunkLeanDeg)), p.shoulderElevationTopM));
+  return add(v(0, start.y, start.z + BODY.barAheadOfShoulders), scale(pullDir(p), t));
 }
 
-const barBottomCache = new WeakMap<PulldownProfile, BarBottom>();
+/** How far the forearm tilts off the pull line (seen from the side) at bar progress `prog`: 0 until the last part of
+ *  the pull, then easing into `bottomForearmOffLineDeg`. */
+function forearmOffLineAt(prog: number, p: PulldownProfile): number {
+  const x = Math.min(1, Math.max(0, (prog - (1 - FOREARM_BREAK_FRACTION)) / FOREARM_BREAK_FRACTION));
+  return p.bottomForearmOffLineDeg * x * x * (3 - 2 * x);
+}
+/** Share of the bar's travel, at the bottom, over which the forearm leaves the pull line. */
+const FOREARM_BREAK_FRACTION = 0.25;
+
 /**
- * Where the bar must finish so the elbow is bent `bottomElbowFlexionDeg` and the upper arm sits
- * `bottomHumerusBehindDeg` behind the trunk. Elbow flexion fixes the shoulder-to-wrist distance, so the wrist lies on a
- * circle beside the shoulder; this walks that circle from up and behind to straight down and takes the
- * point that puts the elbow at the target, preferring the straightest bar path.
+ * Elbow for a shoulder and wrist with the forearm held on the pull line: seen from the side, the forearm points along
+ * `dir`, tilted `offLineDeg` forward of it (+ = elbow dropping behind the line). The elbow lies on a circle around the
+ * shoulder–wrist axis; of the (up to two) points meeting the condition, the one nearer `pole` is used.
  */
-export function barBottomFor(p: PulldownProfile): BarBottom {
-  const cached = barBottomCache.get(p);
+function solveElbowOnLine(shoulder: Vec3, wrist: Vec3, dir: Vec3, offLineDeg: number, pole: Vec3): { elbow: Vec3; wrist: Vec3 } {
+  const a = BODY.upperArm;
+  const b = BODY.forearm;
+  const sw = sub(wrist, shoulder);
+  const d = Math.min(norm(sw), (a + b) * 0.999);
+  const u = unit(sw);
+  const w = add(shoulder, scale(u, d));
+  const x = (a * a - b * b + d * d) / (2 * d);
+  const r = Math.sqrt(Math.max(0, a * a - x * x));
+  const c = add(shoulder, scale(u, x));
+  const e1 = unit(rejectFrom(pole, u));
+  const e2 = cross(u, e1);
+  const n = v(0, -dir.z, dir.y); // in the side view, perpendicular to the line, pointing forward
+  // dot(w - elbow, n) = b sin(off)  ⇔  A cos ψ + B sin ψ = K, elbow = c + r (cos ψ e1 + sin ψ e2)
+  const A = r * dot(e1, n);
+  const B = r * dot(e2, n);
+  const K = dot(sub(w, c), n) - b * Math.sin(rad(offLineDeg));
+  const R = Math.hypot(A, B);
+  const base = Math.atan2(B, A);
+  const spread = R < 1e-9 ? 0 : Math.acos(Math.max(-1, Math.min(1, K / R)));
+  // ψ = 0 is the pole direction; take the solution closest to it.
+  const wrapPi = (t: number) => Math.atan2(Math.sin(t), Math.cos(t));
+  const psi = [base + spread, base - spread].map(wrapPi).sort((p1, p2) => Math.abs(p1) - Math.abs(p2))[0]!;
+  return { elbow: add(c, add(scale(e1, r * Math.cos(psi)), scale(e2, r * Math.sin(psi)))), wrist: w };
+}
+
+const barCache = new WeakMap<PulldownProfile, { top: number; bottom: number }>();
+/**
+ * Where the bar starts and finishes on the pull line (`t`, see barOnLine). Top: shoulder-to-wrist distance gives
+ * `topElbowFlexionDeg` (bisection). Bottom: first point down the line where the upper arm is `bottomHumerusBehindDeg`
+ * behind the trunk.
+ */
+export function barTravelFor(p: PulldownProfile): { top: number; bottom: number } {
+  const cached = barCache.get(p);
   if (cached) return cached;
-  const endLean = p.trunkLeanDeg + p.trunkSwingDeg;
-  const endAxis = unit(shoulderMidAt(endLean));
-  const shoulder = add(shoulderMidAt(endLean), scale(endAxis, p.shoulderElevationBottomM));
-  const lateral = gripHalfWidth(p) - BODY.shoulderHalfWidth;
-  const d = reachForFlexion(p.bottomElbowFlexionDeg);
-  const r = Math.sqrt(Math.max(1e-6, d * d - lateral * lateral));
-  const at = (phiDeg: number): BarBottom => ({ u: shoulder.y + r * Math.cos(rad(phiDeg)), f: shoulder.z + r * Math.sin(rad(phiDeg)) });
-  // Several points on the circle can hit the target angle; take the one closest to the cable line (straightest bar path).
-  const cableF = shoulderMidAt(p.trunkLeanDeg).z + BODY.barAheadOfShoulders;
-  let best = at(0);
-  let bestScore = Number.POSITIVE_INFINITY;
-  let prev = Number.NaN;
-  for (let phi = -60; phi <= 180; phi += 0.25) {
-    const b = at(phi);
-    const pose = poseWithBar(1, p, b);
-    const err = humerusBehindDeg(pose, endLean) - p.bottomHumerusBehindDeg;
-    const crossed = !Number.isNaN(prev) && Math.sign(err) !== Math.sign(prev);
-    // Fallback score for an unreachable target is the angle miss; real crossings always win.
-    const score = crossed ? Math.abs(b.f - cableF) : 1e3 + Math.abs(err);
-    if (score < bestScore) {
-      best = b;
-      bestScore = score;
-    }
-    prev = err;
+  const startShoulder = add(shoulderMidAt(p.trunkLeanDeg), scale(unit(shoulderMidAt(p.trunkLeanDeg)), p.shoulderElevationTopM));
+  const leftShoulder = add(startShoulder, v(BODY.shoulderHalfWidth, 0, 0));
+  const grip = v(gripHalfWidth(p), 0, 0);
+  const reach = reachForFlexion(p.topElbowFlexionDeg);
+  let lo = 0;
+  let hi = 1.2;
+  for (let i = 0; i < 50; i++) {
+    const t = (lo + hi) / 2;
+    if (dist(add(barOnLine(p, t), grip), leftShoulder) > reach) hi = t;
+    else lo = t;
   }
-  barBottomCache.set(p, best);
-  return best;
+  const top = (lo + hi) / 2;
+  const endLean = p.trunkLeanDeg + p.trunkSwingDeg;
+  // Walk down the line until the elbow reaches the target; if it never does (the forearm-on-line constraint caps how far
+  // back the elbow can go), stop where it gets furthest back.
+  const behindAt = (t: number) => humerusBehindDeg(poseWithBar(1, p, top, t), endLean) - p.bottomHumerusBehindDeg;
+  let bottom = top;
+  let bestT = top;
+  let best = behindAt(top);
+  for (let t = top - 0.005; t >= -0.7; t -= 0.005) {
+    const err = behindAt(t);
+    if (err >= 0) {
+      // Refine between t and t + step.
+      lo = t;
+      hi = t + 0.005;
+      for (let i = 0; i < 30; i++) {
+        const m = (lo + hi) / 2;
+        if (behindAt(m) >= 0) lo = m;
+        else hi = m;
+      }
+      bottom = (lo + hi) / 2;
+      best = Number.NaN;
+      break;
+    }
+    if (err > best) {
+      best = err;
+      bestT = t;
+    }
+  }
+  if (!Number.isNaN(best)) bottom = bestT;
+  const travel = { top, bottom };
+  barCache.set(p, travel);
+  return travel;
 }
 
 /** Full 33-point pose in the body frame for bar progress `prog`. */
 export function poseAt(prog: number, p: PulldownProfile): Body {
-  return poseWithBar(prog, p, barBottomFor(p));
+  const { top, bottom } = barTravelFor(p);
+  return poseWithBar(prog, p, top, bottom);
 }
 
-function poseWithBar(prog: number, p: PulldownProfile, bottom: BarBottom): Body {
+function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: number): Body {
   const L = v(1, 0, 0);
   const U = v(0, 1, 0);
   const F = v(0, 0, 1);
@@ -225,25 +296,22 @@ function poseWithBar(prog: number, p: PulldownProfile, bottom: BarBottom): Body 
   const shoulderMid = add(shoulderMidAt(lean), scale(trunkAxis, elevation));
   const neckBase = shoulderMidAt(lean); // head does not move with the shoulder girdle
 
-  // Top: on the cable line in front of where the shoulders start, with the elbows bent topElbowFlexionDeg.
-  // The bar then travels in a straight line to the solved bottom position.
-  const startShoulder = add(shoulderMidAt(p.trunkLeanDeg), scale(unit(shoulderMidAt(p.trunkLeanDeg)), p.shoulderElevationTopM));
-  const topF = startShoulder.z + BODY.barAheadOfShoulders;
-  const lateral = gripHalfWidth(p) - BODY.shoulderHalfWidth;
-  const reach = reachForFlexion(p.topElbowFlexionDeg) * 0.999;
-  const topU = startShoulder.y + Math.sqrt(Math.max(0, reach ** 2 - lateral ** 2 - BODY.barAheadOfShoulders ** 2));
-  const barU = topU + (bottom.u - topU) * prog;
-  const barF = topF + (bottom.f - topF) * prog;
+  // The bar runs down the pull line (fixed in the room, pullLineDeg off vertical) from top to bottom.
+  const t = topT + (bottomT - topT) * prog;
+  const dir = pullDir(p);
+  const offLine = forearmOffLineAt(prog, p);
 
   const pose = {} as Body;
   for (const [side, s] of [["left", 1], ["right", -1]] as const) {
     const shoulder = add(shoulderMid, scale(L, s * BODY.shoulderHalfWidth));
     const lag = side === "right" ? p.rightHandLagM * prog : 0;
-    const wristTarget = v(s * gripHalfWidth(p), barU + lag, barF);
+    const wristTarget = add(barOnLine(p, t + lag), v(s * gripHalfWidth(p), 0, 0));
     // Elbows bend toward the pole: out, down and slightly back by default; forward as elbowsForward → 1.
     const k = p.elbowsForward;
     const pole = add(add(scale(L, s * (1 - k)), scale(U, -1)), scale(F, -0.3 + 1.3 * k));
-    const { elbow, wrist } = solveElbow(shoulder, wristTarget, pole);
+    const { elbow, wrist } = p.forearmOnLine
+      ? solveElbowOnLine(shoulder, wristTarget, dir, offLine, pole)
+      : solveElbow(shoulder, wristTarget, pole);
     const forearmDir = unit(sub(wrist, elbow));
     const thumbSide = scale(L, -s); // overhand grip: thumbs point toward the midline
     pose[`${side}_shoulder`] = shoulder;

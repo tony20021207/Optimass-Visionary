@@ -73,6 +73,10 @@ function landmarkTracks(seq: PoseSequence, window: number): Record<PoseLandmarkN
  * - `*_shoulder_ear_gap_ratio`: ear-to-shoulder distance divided by shoulder width. Drops when the shoulders shrug.
  * - `head_forward_m`: ear midpoint ahead of the shoulder midpoint, perpendicular to the trunk (0 = ears in line
  *   with the trunk). Uses the ears, which stay visible from behind.
+ * - `wrist_mid_fwd_m`: wrist midpoint distance ahead of the hip midpoint along the room's forward axis (bar path, with
+ *   `wrist_mid_up_m`, its height above the hips). Room axes, not trunk, because the cable is fixed in the room.
+ * - `*_forearm_pitch_deg`: forearm (elbow → wrist) angle from vertical seen from the side, + = wrist ahead of the elbow.
+ *   Compared with the bar path's angle it says whether the forearm is on the line of pull.
  * - `wrist_mid_height_m`: wrist midpoint height above the shoulder midpoint (bar-height proxy).
  * - `grip_width_x_shoulder`: wrist-to-wrist distance ÷ shoulder-to-shoulder distance (hand spacing on the bar).
  * - `wrist_height_diff_m`: left wrist height minus right (bar tilt).
@@ -148,6 +152,12 @@ export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): 
 
     const wristMid = mid(p("left_wrist"), p("right_wrist"));
     put("wrist_mid_height_m", i, dot(sub(wristMid, shoulderMid), UP));
+    put("wrist_mid_up_m", i, dot(sub(wristMid, hipMid), UP));
+    put("wrist_mid_fwd_m", i, dot(sub(wristMid, hipMid), forward));
+    for (const side of ["left", "right"] as const) {
+      const forearm = sub(p(`${side}_wrist`), p(`${side}_elbow`));
+      put(`${side}_forearm_pitch_deg`, i, Math.atan2(dot(forearm, forward), dot(forearm, UP)) * RAD_TO_DEG);
+    }
     put("wrist_height_diff_m", i, dot(sub(p("left_wrist"), p("right_wrist")), UP));
   }
   metrics.elbow_flexion_diff_deg = metrics.left_elbow_flexion_deg!.map((l, i) => l - metrics.right_elbow_flexion_deg![i]!);

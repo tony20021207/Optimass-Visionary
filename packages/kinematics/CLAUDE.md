@@ -18,6 +18,10 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
 - Shoulder extension vs adduction: integrated from frame-to-frame humeral rotation in a trunk frame
   (`*_shoulder_extension_cum_deg`, `*_shoulder_adduction_cum_deg`). Don't replace this with sagittal/frontal
   projection angles: near overhead both projections sweep the full arc and double-count the movement.
+- Tony's pulldown standard (2026-10-07): grip 2.0x shoulder width; bar travels a line ~12-15 deg off vertical
+  (`pullLineDeg`); forearms on that line (side view) until a slight break at the bottom; stop with the elbows just
+  past the trunk line. New fault codes not yet in the Tier 2 YAML: excessive_shoulder_extension, bar_path_off_line,
+  forearm_off_line.
 - `pnpm --filter @optimass/kinematics pulldown:report` prints the feature table for every synthetic variant.
 
 ## Capture protocol (decided by Tony, 2026-10-07)

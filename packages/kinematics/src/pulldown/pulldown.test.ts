@@ -104,6 +104,8 @@ describe("placeholder parameters vs synthetic reps", () => {
     ["shrug", ["shoulder_elevation"]],
     ["fast_eccentric", ["fast_eccentric"]],
     ["over_pull", ["excessive_shoulder_extension"]],
+    // Close grip, elbows in front: the forearm cannot stay on the line of pull.
+    ["elbows_forward", ["forearm_off_line"]],
     ["asymmetric", ["asymmetric_pull"]],
     ["forward_head", ["forward_head"]],
   ] as const)("%s trips only its own checks: %j", (variant, faults) => {
@@ -115,8 +117,6 @@ describe("placeholder parameters vs synthetic reps", () => {
     for (const az of AZIMUTHS) {
       const wide = analyzePulldown(clip("good", az)).reps.map((r) => r.features);
       const fwd = analyzePulldown(clip("elbows_forward", az)).reps;
-      // The elbows-forward variant is a valid pull: no judged check fails.
-      for (const r of fwd) expect(r.checks.filter((c) => c.status === "fail")).toEqual([]);
       const f = fwd.map((r) => r.features);
       // Wide grip, elbows out: mostly adduction. Elbows forward: mostly extension.
       expect(mean(wide.map((x) => x.extension_share))).toBeLessThan(0.35);
@@ -125,6 +125,16 @@ describe("placeholder parameters vs synthetic reps", () => {
       expect(mean(f.map((x) => x.plane_of_elevation_mid_deg))).toBeGreaterThan(60);
       // Both pulls cover a full arm arc (~95-165 deg); only the split changes.
       for (const x of [...wide, ...f]) expect(x.shoulder_extension_deg + x.shoulder_adduction_deg).toBeGreaterThan(80);
+    }
+  });
+
+  it("recovers the pull line and forearm alignment from every camera angle", () => {
+    for (const az of AZIMUTHS) {
+      for (const r of analyzePulldown(clip("good", az)).reps) {
+        expect(Math.abs(r.features.pull_line_deg - PULLDOWN_VARIANTS.good.pullLineDeg)).toBeLessThan(2);
+        expect(r.features.forearm_off_line_deg).toBeLessThan(5);
+        expect(Math.abs(r.features.forearm_off_line_bottom_deg - PULLDOWN_VARIANTS.good.bottomForearmOffLineDeg)).toBeLessThan(4);
+      }
     }
   });
 
