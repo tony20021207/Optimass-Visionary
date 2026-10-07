@@ -1,0 +1,43 @@
+/*
+ * OptiMass Tailwind v4 preset: shared design tokens.
+ * Import from an app stylesheet after `@import "tailwindcss";`.
+ * Owned by main (M0). Lanes use these tokens; they don't edit them.
+ */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-brand-50: oklch(0.97 0.02 165);
+  --color-brand-100: oklch(0.93 0.05 165);
+  --color-brand-500: oklch(0.65 0.14 165);
+  --color-brand-600: oklch(0.56 0.13 165);
+  --color-brand-700: oklch(0.47 0.11 165);
+
+  --color-surface: oklch(0.99 0 0);
+  --color-surface-muted: oklch(0.965 0.003 250);
+  --color-border: oklch(0.9 0.005 250);
+  --color-ink: oklch(0.22 0.01 250);
+  --color-ink-muted: oklch(0.5 0.01 250);
+
+  /* Diagnostic tiers and severities */
+  --color-tier1: oklch(0.62 0.17 35);
+  --color-tier2: oklch(0.58 0.14 280);
+  --color-tier3: oklch(0.6 0.13 165);
+  --color-severity-minor: oklch(0.78 0.13 90);
+  --color-severity-moderate: oklch(0.7 0.16 55);
+  --color-severity-major: oklch(0.6 0.2 25);
+
+  --radius-card: 0.75rem;
+}
+
+@layer base {
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-surface: oklch(0.18 0.01 250);
+      --color-surface-muted: oklch(0.23 0.01 250);
+      --color-border: oklch(0.32 0.01 250);
+      --color-ink: oklch(0.95 0.005 250);
+      --color-ink-muted: oklch(0.7 0.01 250);
+    }
+  }
+}

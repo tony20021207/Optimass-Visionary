@@ -1,0 +1,27 @@
+{
+  "name": "@optimass/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "typecheck": "next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "@optimass/anatomy-kb": "workspace:*",
+    "@optimass/db": "workspace:*",
+    "@optimass/diagnostics": "workspace:*",
+    "@optimass/exercise-rating": "workspace:*",
+    "@optimass/kinematics": "workspace:*",
+    "@optimass/pose-capture": "workspace:*",
+    "@optimass/program-builder": "workspace:*",
+    "@optimass/types": "workspace:*",
+    "@optimass/ui": "workspace:*",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  }
+}
