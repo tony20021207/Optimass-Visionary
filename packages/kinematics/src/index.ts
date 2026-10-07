@@ -33,3 +33,5 @@ export function analyzeKinematics(sequence: PoseSequence): KinematicAnalysis {
 export * from "./vec3";
 export * from "./signal";
 export * as pulldown from "./pulldown";
+export * as posture from "./posture";
+export * from "./camera";
