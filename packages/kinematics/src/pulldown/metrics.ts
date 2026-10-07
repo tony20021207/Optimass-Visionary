@@ -3,7 +3,7 @@
 import { POSE_LANDMARK, type PoseLandmarkName, type PoseSequence } from "@optimass/types";
 import type { KinematicSeries } from "../index";
 import { derivative, smooth } from "../signal";
-import { angleBetweenDeg, cross, dist, dot, jointAngleDeg, mid, norm, rejectFrom, RAD_TO_DEG, scale, sub, unit, v, type Vec3 } from "../vec3";
+import { add, angleBetweenDeg, cross, dist, dot, jointAngleDeg, mid, norm, rejectFrom, RAD_TO_DEG, scale, sub, unit, v, type Vec3 } from "../vec3";
 
 /**
  * Stable metric names. Angles are degrees, angular velocities degrees per second, speeds meters per second,
@@ -30,6 +30,11 @@ export const PULLDOWN_SPEED_LANDMARKS = [
 export interface MetricOptions {
   /** Moving-average window (frames) applied to landmark coordinates before any math. 1 disables smoothing. */
   smoothingWindow?: number;
+  /**
+   * Assumed pulley height above the hips (m), used to estimate the cable's direction (pulley taken to be straight above
+   * the knees). Equipment assumption, not measured: MediaPipe cannot see the machine. Default 1.6.
+   */
+  pulleyAboveHipM?: number;
 }
 
 /** World "up". MediaPipe world y points down; this assumes the camera is roughly level. */
@@ -76,7 +81,9 @@ function landmarkTracks(seq: PoseSequence, window: number): Record<PoseLandmarkN
  * - `wrist_mid_fwd_m`: wrist midpoint distance ahead of the hip midpoint along the room's forward axis (bar path, with
  *   `wrist_mid_up_m`, its height above the hips). Room axes, not trunk, because the cable is fixed in the room.
  * - `*_forearm_pitch_deg`: forearm (elbow → wrist) angle from vertical seen from the side, + = wrist ahead of the elbow.
- *   Compared with the bar path's angle it says whether the forearm is on the line of pull.
+ *   Compared with `cable_pitch_deg` it says whether the forearm is on the line of the force.
+ * - `cable_pitch_deg`: estimated cable angle from vertical, side view, from the wrist midpoint to a pulley assumed to
+ *   sit `pulleyAboveHipM` above the hips and straight above the knees (+ = pulley ahead of the hands).
  * - `wrist_mid_height_m`: wrist midpoint height above the shoulder midpoint (bar-height proxy).
  * - `grip_width_x_shoulder`: wrist-to-wrist distance ÷ shoulder-to-shoulder distance (hand spacing on the bar).
  * - `wrist_height_diff_m`: left wrist height minus right (bar tilt).
@@ -87,6 +94,7 @@ function landmarkTracks(seq: PoseSequence, window: number): Record<PoseLandmarkN
  */
 export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): KinematicSeries {
   const window = options.smoothingWindow ?? 5;
+  const pulleyAboveHip = options.pulleyAboveHipM ?? 1.6;
   const lm = landmarkTracks(seq, window);
   const timestampsMs = seq.frames.map((f) => f.timestampMs);
   const n = timestampsMs.length;
@@ -154,6 +162,9 @@ export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): 
     put("wrist_mid_height_m", i, dot(sub(wristMid, shoulderMid), UP));
     put("wrist_mid_up_m", i, dot(sub(wristMid, hipMid), UP));
     put("wrist_mid_fwd_m", i, dot(sub(wristMid, hipMid), forward));
+    const pulley = add(add(hipMid, scale(forward, dot(sub(kneeMid, hipMid), forward))), scale(UP, pulleyAboveHip));
+    const cable = sub(pulley, wristMid);
+    put("cable_pitch_deg", i, Math.atan2(dot(cable, forward), dot(cable, UP)) * RAD_TO_DEG);
     for (const side of ["left", "right"] as const) {
       const forearm = sub(p(`${side}_wrist`), p(`${side}_elbow`));
       put(`${side}_forearm_pitch_deg`, i, Math.atan2(dot(forearm, forward), dot(forearm, UP)) * RAD_TO_DEG);

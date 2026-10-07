@@ -17,8 +17,8 @@ export const PULLDOWN_FEATURES = {
   elbow_forward_bottom_m: "Elbow ahead of the shoulder at the bottom (m, + = in front of the body)",
   grip_width_x_shoulder: "Hand spacing on the bar as a multiple of shoulder width (wrist to wrist ÷ shoulder to shoulder, rep average)",
   pull_line_deg: "Bar path angle from vertical, top of the rep to the bottom (+ = bar starts ahead and comes back toward the body)",
-  forearm_off_line_deg: "Forearm vs the bar path, seen from the side, over the first three quarters of the pull (mean absolute angle, both arms)",
-  forearm_off_line_bottom_deg: "Forearm vs the bar path at the bottom (+ = elbows dropped behind the line; mean of both arms)",
+  forearm_off_line_deg: "Forearm vs the cable (line of force, pulley assumed above the knees), seen from the side, over the first three quarters of the pull (mean absolute angle, both arms)",
+  forearm_off_line_bottom_deg: "Forearm vs the cable at the bottom (+ = elbows dropped behind the line; mean of both arms)",
   bar_bottom_rel_shoulder_m: "Lowest wrist-midpoint height relative to the shoulders",
   trunk_lean_mean_deg: "Average trunk lean back from vertical",
   trunk_lean_range_deg: "How much the trunk lean changes within the rep",
@@ -60,7 +60,8 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
   const up = series.metrics.wrist_mid_up_m!;
   const fwd = series.metrics.wrist_mid_fwd_m!;
   const pullLine = Math.atan2(fwd[rep.startFrame]! - fwd[bottomFrame]!, up[rep.startFrame]! - up[bottomFrame]!) * (180 / Math.PI);
-  const offLine = (side: "left" | "right", i: number) => series.metrics[`${side}_forearm_pitch_deg`]![i]! - pullLine;
+  const offLine = (side: "left" | "right", i: number) =>
+    series.metrics[`${side}_forearm_pitch_deg`]![i]! - series.metrics.cable_pitch_deg![i]!;
   const onLineTo = rep.startFrame + Math.round((bottomFrame - rep.startFrame) * 0.75);
   const onLineFrames = Array.from({ length: Math.max(1, onLineTo - rep.startFrame + 1) }, (_, k) => rep.startFrame + k);
   const performed = (name: string) =>

@@ -26,8 +26,12 @@ export interface PulldownProfile {
   lineAheadOfShouldersM: number;
   /** Pull line: the bar travels down a straight line tilted this far from vertical (top end forward). Tony: 12-15°. */
   pullLineDeg: number;
+  /** Pulley (where the cable leaves the machine): height above the hips and distance ahead of the knees (m). The
+   *  cable runs from the bar to here, so it is the direction the force pulls the hands. Tony: above the knees. */
+  pulleyAboveHipM: number;
+  pulleyAheadOfKneeM: number;
   /**
-   * Seen from the side, the forearm stays on the pull line until the last quarter of the pull, then tilts this far off
+   * Seen from the side, the forearm stays on the cable line until the last quarter of the pull, then tilts this far off
    * it (+ = elbows dropping behind the line) by the bottom.
    */
   bottomForearmOffLineDeg: number;
@@ -73,6 +77,8 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   topElbowFlexionDeg: 5,
   pullLineDeg: 13.5,
   lineAheadOfShouldersM: 0.09,
+  pulleyAboveHipM: 1.6,
+  pulleyAheadOfKneeM: 0,
   bottomForearmOffLineDeg: 10,
   forearmOnLine: true,
   bottomHumerusBehindDeg: 5,
@@ -92,7 +98,7 @@ export const PULLDOWN_VARIANTS = {
   /** Torso swings back hard to start the bar moving. */
   momentum_swing: { ...GOOD_PULLDOWN, concentricS: 0.6, trunkLeanDeg: 10, trunkSwingDeg: 28, bottomHumerusBehindDeg: 0, seed: 2 },
   /** Elbows never straighten at the top and the bar stops around the chin. */
-  partial_rom: { ...GOOD_PULLDOWN, topElbowFlexionDeg: 50, bottomHumerusBehindDeg: -10, seed: 3 },
+  partial_rom: { ...GOOD_PULLDOWN, topElbowFlexionDeg: 40, bottomHumerusBehindDeg: -8, seed: 3 },
   /** Shoulders ride up toward the ears instead of depressing as the bar comes down. */
   shrug: { ...GOOD_PULLDOWN, shoulderElevationTopM: 0.03, shoulderElevationBottomM: 0.05, seed: 4 },
   /** Pulls past the trunk line: the whole arm rotates back around the shoulder at the bottom (the old default). */
@@ -104,7 +110,7 @@ export const PULLDOWN_VARIANTS = {
   /** Chin pokes forward as the bar comes down. */
   forward_head: { ...GOOD_PULLDOWN, headForwardM: 0.06, seed: 7 },
   /** Right arm finishes short of the left. */
-  asymmetric: { ...GOOD_PULLDOWN, rightHandLagM: 0.08, seed: 6 },
+  asymmetric: { ...GOOD_PULLDOWN, rightHandLagM: 0.05, seed: 6 },
 } satisfies Record<string, PulldownProfile>;
 export type PulldownVariant = keyof typeof PULLDOWN_VARIANTS;
 
@@ -200,7 +206,7 @@ function forearmOffLineAt(prog: number, p: PulldownProfile): number {
 const FOREARM_BREAK_FRACTION = 0.25;
 
 /**
- * Elbow for a shoulder and wrist with the forearm held on the pull line: seen from the side, the forearm points along
+ * Elbow for a shoulder and wrist with the forearm held on the cable line: seen from the side, the forearm points along
  * `dir`, tilted `offLineDeg` forward of it (+ = elbow dropping behind the line). The elbow lies on a circle around the
  * shoulder–wrist axis; of the (up to two) points meeting the condition, the one nearer `pole` is used.
  */
@@ -302,7 +308,9 @@ function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: nu
 
   // The bar runs down the pull line (fixed in the room, pullLineDeg off vertical) from top to bottom.
   const t = topT + (bottomT - topT) * prog;
-  const dir = pullDir(p);
+  // Forearms line up with the force, i.e. the cable from the bar to the pulley above the knees.
+  const pulley = v(0, p.pulleyAboveHipM, BODY.thigh + p.pulleyAheadOfKneeM);
+  const dir = unit(sub(pulley, barOnLine(p, t)));
   const offLine = forearmOffLineAt(prog, p);
 
   const pose = {} as Body;
