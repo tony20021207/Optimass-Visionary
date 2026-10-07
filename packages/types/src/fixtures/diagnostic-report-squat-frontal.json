@@ -1,0 +1,81 @@
+{
+  "id": "fixture-report-squat-frontal",
+  "exerciseId": "barbell_back_squat",
+  "cameraView": "frontal",
+  "createdAt": "2026-10-07T00:00:00.000Z",
+  "reps": [
+    {
+      "repIndex": 0,
+      "side": "bilateral",
+      "startMs": 533,
+      "endMs": 3000,
+      "startFrame": 8,
+      "endFrame": 45,
+      "phases": [
+        { "phase": "eccentric", "startMs": 533, "endMs": 1733 },
+        { "phase": "concentric", "startMs": 1733, "endMs": 3000 }
+      ],
+      "romDeg": {}
+    },
+    {
+      "repIndex": 1,
+      "side": "bilateral",
+      "startMs": 3067,
+      "endMs": 5467,
+      "startFrame": 46,
+      "endFrame": 82,
+      "phases": [
+        { "phase": "eccentric", "startMs": 3067, "endMs": 4267 },
+        { "phase": "concentric", "startMs": 4267, "endMs": 5467 }
+      ],
+      "romDeg": {}
+    }
+  ],
+  "findings": [
+    {
+      "id": "f1",
+      "ruleId": "squat_knee_valgus",
+      "exerciseId": "barbell_back_squat",
+      "errorCode": "knee_valgus",
+      "label": "Knees move inward at the bottom (PLACEHOLDER)",
+      "requiredView": "frontal",
+      "severity": "moderate",
+      "side": "bilateral",
+      "repIndices": [1],
+      "evidence": [
+        { "metric": "knee_medial_displacement_ratio", "value": 0, "threshold": 0, "unit": "ratio" }
+      ],
+      "confidence": 0.5
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "h1",
+      "findingIds": ["f1"],
+      "category": "mobility",
+      "label": "PLACEHOLDER hypothesis: limited ankle dorsiflexion",
+      "structures": { "muscles": [], "joints": ["ankle"] },
+      "rank": 1,
+      "likelihood": 0.5,
+      "screeningTest": {
+        "id": "placeholder_screen",
+        "name": "PLACEHOLDER screening test",
+        "procedure": "TODO(Tony): author in content/rules/tier2",
+        "positiveCriterion": "TODO(Tony)"
+      }
+    }
+  ],
+  "prescriptions": [
+    {
+      "id": "p1",
+      "hypothesisId": "h1",
+      "type": "mobility",
+      "name": "PLACEHOLDER corrective",
+      "dosage": { "notes": "TODO(Tony): author in content/rules/tier3" }
+    }
+  ],
+  "rulesVersion": { "tier1": "placeholder", "tier2": "placeholder", "tier3": "placeholder" },
+  "disclaimers": [
+    "Fixture data for UI and contract tests only. All clinical content is a placeholder."
+  ]
+}

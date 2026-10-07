@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(/packages/db/drizzle.config.ts)",
+      "Write(/packages/db/drizzle.config.ts)"
+    ]
+  }
+}
