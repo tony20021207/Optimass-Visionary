@@ -31,7 +31,7 @@
     {
       "id": "arms_down_at_bottom",
       "feature": "humerothoracic_elevation_bottom_deg",
-      "max": 80,
+      "max": 65,
       "fault": "incomplete_bottom_rom",
       "why": "Upper arms should finish close to the trunk (shoulder adduction/extension near end range).",
       "placeholder": true

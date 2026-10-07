@@ -31,10 +31,12 @@ export interface PulldownProfile {
   pulleyAboveHipM: number;
   pulleyAheadOfKneeM: number;
   /**
-   * Seen from the side, the forearm stays on the cable line until the last quarter of the pull, then tilts this far off
-   * it (+ = elbows dropping behind the line) by the bottom.
+   * How far the arms come down at the bottom: upper arm angle from the trunk's downward axis (0 = against the sides).
+   * Lower = more adduction. Seen from the side the forearm stays on the cable line until the last quarter of the pull,
+   * then breaks off it (elbows dropping behind) by whatever angle lands the arms here at the trunk-line stop point.
+   * Less break = arms finish lower; a break of 0 is the lowest the forearm-on-line pull can reach.
    */
-  bottomForearmOffLineDeg: number;
+  bottomArmElevationDeg: number;
   /**
    * Hold the forearm on the pull line (side view) as above. Off for the elbows-forward pull: with a close grip the
    * forearm can only stay on the line by flaring the elbow out, so there the elbow just bends toward its pole.
@@ -79,7 +81,7 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   lineAheadOfShouldersM: 0.09,
   pulleyAboveHipM: 1.6,
   pulleyAheadOfKneeM: 0,
-  bottomForearmOffLineDeg: 10,
+  bottomArmElevationDeg: 50,
   forearmOnLine: true,
   bottomHumerusBehindDeg: 5,
   shoulderElevationTopM: 0.03,
@@ -102,7 +104,7 @@ export const PULLDOWN_VARIANTS = {
   /** Shoulders ride up toward the ears instead of depressing as the bar comes down. */
   shrug: { ...GOOD_PULLDOWN, shoulderElevationTopM: 0.03, shoulderElevationBottomM: 0.05, seed: 4 },
   /** Pulls past the trunk line: the whole arm rotates back around the shoulder at the bottom (the old default). */
-  over_pull: { ...GOOD_PULLDOWN, bottomHumerusBehindDeg: 28, bottomForearmOffLineDeg: 35, seed: 9 },
+  over_pull: { ...GOOD_PULLDOWN, bottomHumerusBehindDeg: 28, seed: 9 },
   /** Bar is let go on the way up instead of being lowered under control. */
   fast_eccentric: { ...GOOD_PULLDOWN, eccentricS: 0.5, seed: 5 },
   /** Closer grip with the elbows travelling in front of the body: more shoulder extension, less adduction. */
@@ -196,11 +198,11 @@ function barOnLine(p: PulldownProfile, t: number): Vec3 {
   return add(v(0, start.y, start.z + p.lineAheadOfShouldersM), scale(pullDir(p), t));
 }
 
-/** How far the forearm tilts off the pull line (seen from the side) at bar progress `prog`: 0 until the last part of
- *  the pull, then easing into `bottomForearmOffLineDeg`. */
-function forearmOffLineAt(prog: number, p: PulldownProfile): number {
+/** How far the forearm tilts off the cable line (seen from the side) at bar progress `prog`: 0 until the last part of
+ *  the pull, then easing into `breakDeg`. */
+function forearmOffLineAt(prog: number, breakDeg: number): number {
   const x = Math.min(1, Math.max(0, (prog - (1 - FOREARM_BREAK_FRACTION)) / FOREARM_BREAK_FRACTION));
-  return p.bottomForearmOffLineDeg * x * x * (3 - 2 * x);
+  return breakDeg * x * x * (3 - 2 * x);
 }
 /** Share of the bar's travel, at the bottom, over which the forearm leaves the pull line. */
 const FOREARM_BREAK_FRACTION = 0.25;
@@ -236,13 +238,54 @@ function solveElbowOnLine(shoulder: Vec3, wrist: Vec3, dir: Vec3, offLineDeg: nu
   return { elbow: add(c, add(scale(e1, r * Math.cos(psi)), scale(e2, r * Math.sin(psi)))), wrist: w };
 }
 
-const barCache = new WeakMap<PulldownProfile, { top: number; bottom: number }>();
+interface BarTravel {
+  top: number;
+  bottom: number;
+  /** Forearm break off the cable line at the bottom (degrees), solved from bottomArmElevationDeg. */
+  breakDeg: number;
+}
+const barCache = new WeakMap<PulldownProfile, BarTravel>();
+
+/** Upper arm angle from the trunk's downward axis (0 = arm against the side), left arm, body frame. */
+function armElevationDeg(pose: Body, leanDeg: number): number {
+  const down = v(0, -Math.cos(rad(leanDeg)), Math.sin(rad(leanDeg)));
+  const h = sub(pose.left_elbow, pose.left_shoulder);
+  return (Math.acos(Math.max(-1, Math.min(1, dot(h, down) / norm(h)))) * 180) / Math.PI;
+}
+
+/**
+ * Walks down the line from the top until the upper arm is bottomHumerusBehindDeg behind the trunk; if it never gets
+ * there (the forearm-on-line constraint caps how far back the elbow can go), stops where it gets furthest back.
+ */
+function stopOnLine(p: PulldownProfile, top: number, breakDeg: number, endLean: number): number {
+  const behindAt = (t: number) => humerusBehindDeg(poseWithBar(1, p, top, t, breakDeg), endLean) - p.bottomHumerusBehindDeg;
+  let bestT = top;
+  let best = behindAt(top);
+  for (let t = top - 0.005; t >= -0.7; t -= 0.005) {
+    const err = behindAt(t);
+    if (err >= 0) {
+      let lo = t;
+      let hi = t + 0.005;
+      for (let i = 0; i < 30; i++) {
+        const m = (lo + hi) / 2;
+        if (behindAt(m) >= 0) lo = m;
+        else hi = m;
+      }
+      return (lo + hi) / 2;
+    }
+    if (err > best) {
+      best = err;
+      bestT = t;
+    }
+  }
+  return bestT;
+}
 /**
  * Where the bar starts and finishes on the pull line (`t`, see barOnLine). Top: shoulder-to-wrist distance gives
- * `topElbowFlexionDeg` (bisection). Bottom: first point down the line where the upper arm is `bottomHumerusBehindDeg`
- * behind the trunk.
+ * `topElbowFlexionDeg` (bisection). Bottom: the trunk-line stop point (stopOnLine), with the forearm break chosen so the
+ * arms finish at `bottomArmElevationDeg`.
  */
-export function barTravelFor(p: PulldownProfile): { top: number; bottom: number } {
+export function barTravelFor(p: PulldownProfile): BarTravel {
   const cached = barCache.get(p);
   if (cached) return cached;
   const startShoulder = add(shoulderMidAt(p.trunkLeanDeg), scale(unit(shoulderMidAt(p.trunkLeanDeg)), p.shoulderElevationTopM));
@@ -258,45 +301,38 @@ export function barTravelFor(p: PulldownProfile): { top: number; bottom: number 
   }
   const top = (lo + hi) / 2;
   const endLean = p.trunkLeanDeg + p.trunkSwingDeg;
-  // Walk down the line until the elbow reaches the target; if it never does (the forearm-on-line constraint caps how far
-  // back the elbow can go), stop where it gets furthest back.
-  const behindAt = (t: number) => humerusBehindDeg(poseWithBar(1, p, top, t), endLean) - p.bottomHumerusBehindDeg;
-  let bottom = top;
-  let bestT = top;
-  let best = behindAt(top);
-  for (let t = top - 0.005; t >= -0.7; t -= 0.005) {
-    const err = behindAt(t);
-    if (err >= 0) {
-      // Refine between t and t + step.
-      lo = t;
-      hi = t + 0.005;
-      for (let i = 0; i < 30; i++) {
-        const m = (lo + hi) / 2;
-        if (behindAt(m) >= 0) lo = m;
-        else hi = m;
-      }
-      bottom = (lo + hi) / 2;
-      best = Number.NaN;
-      break;
-    }
-    if (err > best) {
-      best = err;
-      bestT = t;
-    }
+  const bottomFor = (breakDeg: number) => stopOnLine(p, top, breakDeg, endLean);
+  if (!p.forearmOnLine) {
+    const travel = { top, bottom: bottomFor(0), breakDeg: 0 };
+    barCache.set(p, travel);
+    return travel;
   }
-  if (!Number.isNaN(best)) bottom = bestT;
-  const travel = { top, bottom };
+  // More forearm break → the elbow reaches the stop point sooner, with the arms higher. Bisect the break that lands the
+  // arms at bottomArmElevationDeg (0-60 deg of break; at 0 the arms are as low as this pull allows).
+  const elevationFor = (breakDeg: number) => armElevationDeg(poseWithBar(1, p, top, bottomFor(breakDeg), breakDeg), endLean);
+  let breakDeg = 0;
+  if (elevationFor(0) < p.bottomArmElevationDeg) {
+    let blo = 0;
+    let bhi = 60;
+    for (let i = 0; i < 25; i++) {
+      const m = (blo + bhi) / 2;
+      if (elevationFor(m) < p.bottomArmElevationDeg) blo = m;
+      else bhi = m;
+    }
+    breakDeg = (blo + bhi) / 2;
+  }
+  const travel = { top, bottom: bottomFor(breakDeg), breakDeg };
   barCache.set(p, travel);
   return travel;
 }
 
 /** Full 33-point pose in the body frame for bar progress `prog`. */
 export function poseAt(prog: number, p: PulldownProfile): Body {
-  const { top, bottom } = barTravelFor(p);
-  return poseWithBar(prog, p, top, bottom);
+  const { top, bottom, breakDeg } = barTravelFor(p);
+  return poseWithBar(prog, p, top, bottom, breakDeg);
 }
 
-function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: number): Body {
+function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: number, breakDeg: number): Body {
   const L = v(1, 0, 0);
   const U = v(0, 1, 0);
   const F = v(0, 0, 1);
@@ -311,7 +347,7 @@ function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: nu
   // Forearms line up with the force, i.e. the cable from the bar to the pulley above the knees.
   const pulley = v(0, p.pulleyAboveHipM, BODY.thigh + p.pulleyAheadOfKneeM);
   const dir = unit(sub(pulley, barOnLine(p, t)));
-  const offLine = forearmOffLineAt(prog, p);
+  const offLine = forearmOffLineAt(prog, breakDeg);
 
   const pose = {} as Body;
   for (const [side, s] of [["left", 1], ["right", -1]] as const) {

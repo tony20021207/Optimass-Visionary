@@ -7,6 +7,7 @@ import {
   PULLDOWN_WAIST_HEIGHT_M,
   PULLDOWN_VARIANTS,
   analyzePulldown,
+  barTravelFor,
   parsePulldownParams,
   pulldownSeries,
   segmentLength,
@@ -133,7 +134,9 @@ describe("placeholder parameters vs synthetic reps", () => {
       for (const r of analyzePulldown(clip("good", az)).reps) {
         expect(Math.abs(r.features.pull_line_deg - PULLDOWN_VARIANTS.good.pullLineDeg)).toBeLessThan(2);
         expect(r.features.forearm_off_line_deg).toBeLessThan(5);
-        expect(Math.abs(r.features.forearm_off_line_bottom_deg - PULLDOWN_VARIANTS.good.bottomForearmOffLineDeg)).toBeLessThan(4);
+        expect(Math.abs(r.features.forearm_off_line_bottom_deg - barTravelFor(PULLDOWN_VARIANTS.good).breakDeg)).toBeLessThan(4);
+        // Arms finish where the profile asks (adduction target).
+        expect(Math.abs(r.features.humerothoracic_elevation_bottom_deg - PULLDOWN_VARIANTS.good.bottomArmElevationDeg)).toBeLessThan(5);
       }
     }
   });
