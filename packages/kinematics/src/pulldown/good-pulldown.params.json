@@ -23,7 +23,7 @@
     {
       "id": "bar_reaches_chest",
       "feature": "bar_bottom_rel_shoulder_m",
-      "max": 0.15,
+      "max": 0.18,
       "fault": "incomplete_bottom_rom",
       "why": "Bar should come down at least to chin level. Loosened from 0.05 when the bottom was redefined by the elbows reaching the trunk line (Tony, 2026-10-07).",
       "placeholder": true
@@ -31,7 +31,7 @@
     {
       "id": "arms_down_at_bottom",
       "feature": "humerothoracic_elevation_bottom_deg",
-      "max": 75,
+      "max": 80,
       "fault": "incomplete_bottom_rom",
       "why": "Upper arms should finish close to the trunk (shoulder adduction/extension near end range).",
       "placeholder": true
@@ -122,6 +122,7 @@
     { "id": "top_pause_time", "feature": "top_pause_s", "why": "Reported only. Add a min to require a stretch pause at the top.", "placeholder": true },
     { "id": "peak_wrist_speed", "feature": "peak_wrist_speed_mps", "why": "Reported only.", "placeholder": true },
     { "id": "peak_elbow_flexion_velocity", "feature": "peak_elbow_flexion_vel_dps", "why": "Reported only.", "placeholder": true },
+    { "id": "elbow_bend_at_bottom", "feature": "elbow_flexion_peak_deg", "why": "Reported only. Most elbow bend in the rep. Add a max to cap it; a wider grip lowers it for the same bar depth.", "placeholder": true },
     { "id": "shoulder_extension", "feature": "shoulder_extension_deg", "why": "Reported only. Degrees of arm travel about the trunk's side-to-side axis (elbows down and back from in front).", "placeholder": true },
     { "id": "shoulder_adduction", "feature": "shoulder_adduction_deg", "why": "Reported only. Degrees of arm travel about the trunk's front-to-back axis (elbows down to the sides from out wide).", "placeholder": true },
     { "id": "extension_share", "feature": "extension_share", "why": "Reported only. 0 = pure adduction (wide frontal-plane pull), 1 = pure extension (elbows-forward sagittal pull). Add a min (e.g. 0.6) to require an extension-biased pull.", "placeholder": true },
