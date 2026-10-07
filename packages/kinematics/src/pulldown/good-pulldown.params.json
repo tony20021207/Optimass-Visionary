@@ -23,17 +23,33 @@
     {
       "id": "bar_reaches_chest",
       "feature": "bar_bottom_rel_shoulder_m",
-      "max": 0.05,
+      "max": 0.15,
       "fault": "incomplete_bottom_rom",
-      "why": "Wrists should come down to about shoulder level (bar at the upper chest), not stop at the chin.",
+      "why": "Bar should come down at least to chin level. Loosened from 0.05 when the bottom was redefined by the elbows reaching the trunk line (Tony, 2026-10-07).",
       "placeholder": true
     },
     {
       "id": "arms_down_at_bottom",
       "feature": "humerothoracic_elevation_bottom_deg",
-      "max": 65,
+      "max": 75,
       "fault": "incomplete_bottom_rom",
       "why": "Upper arms should finish close to the trunk (shoulder adduction/extension near end range).",
+      "placeholder": true
+    },
+    {
+      "id": "elbows_reach_trunk_line",
+      "feature": "humerus_behind_trunk_bottom_deg",
+      "min": -5,
+      "fault": "incomplete_bottom_rom",
+      "why": "At the bottom the elbows should reach the trunk line (upper arm in the trunk's frontal plane).",
+      "placeholder": true
+    },
+    {
+      "id": "elbows_stop_near_trunk_line",
+      "feature": "humerus_behind_trunk_bottom_deg",
+      "max": 15,
+      "fault": "excessive_shoulder_extension",
+      "why": "Stop just past the trunk line: once the whole arm rotates back around the shoulder, the extra range is shoulder hyperextension, not more lat work (Tony, 2026-10-07).",
       "placeholder": true
     },
     {

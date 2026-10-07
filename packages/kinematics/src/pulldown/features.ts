@@ -13,6 +13,7 @@ export const PULLDOWN_FEATURES = {
   shoulder_adduction_deg: "Shoulder adduction performed from rep start to the bottom: arm rotation about the trunk's front-to-back axis (mean of both arms)",
   extension_share: "Share of the pull done by extension: extension / (extension + adduction). 0 = pure adduction, 1 = pure extension",
   plane_of_elevation_mid_deg: "Arm direction during the pull: 0 = out to the side (frontal plane), 90 = forward (sagittal plane); averaged over the pull where defined",
+  humerus_behind_trunk_bottom_deg: "Upper arm angle behind the trunk line at the bottom (+ = elbows behind the body, arm rotating back around the shoulder; mean of both arms)",
   elbow_forward_bottom_m: "Elbow ahead of the shoulder at the bottom (m, + = in front of the body)",
   bar_bottom_rel_shoulder_m: "Lowest wrist-midpoint height relative to the shoulders",
   trunk_lean_mean_deg: "Average trunk lean back from vertical",
@@ -71,6 +72,10 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
     plane_of_elevation_mid_deg: mean(
       [...m("left_plane_of_elevation_deg", cFrom, cTo), ...m("right_plane_of_elevation_deg", cFrom, cTo)].filter((x) => !Number.isNaN(x)),
     ),
+    humerus_behind_trunk_bottom_deg: mean([
+      series.metrics.left_humerus_behind_trunk_deg![bottomFrame]!,
+      series.metrics.right_humerus_behind_trunk_deg![bottomFrame]!,
+    ]),
     elbow_forward_bottom_m: mean([series.metrics.left_elbow_forward_m![bottomFrame]!, series.metrics.right_elbow_forward_m![bottomFrame]!]),
     bar_bottom_rel_shoulder_m: min(height),
     trunk_lean_mean_deg: mean(lean),

@@ -103,6 +103,7 @@ describe("placeholder parameters vs synthetic reps", () => {
     ["partial_rom", ["incomplete_top_rom", "incomplete_bottom_rom"]],
     ["shrug", ["shoulder_elevation"]],
     ["fast_eccentric", ["fast_eccentric"]],
+    ["over_pull", ["excessive_shoulder_extension"]],
     ["asymmetric", ["asymmetric_pull"]],
     ["forward_head", ["forward_head"]],
   ] as const)("%s trips only its own checks: %j", (variant, faults) => {
@@ -122,8 +123,8 @@ describe("placeholder parameters vs synthetic reps", () => {
       expect(mean(f.map((x) => x.extension_share))).toBeGreaterThan(0.75);
       expect(mean(wide.map((x) => x.plane_of_elevation_mid_deg))).toBeLessThan(30);
       expect(mean(f.map((x) => x.plane_of_elevation_mid_deg))).toBeGreaterThan(60);
-      // Total arm travel is similar either way (~100-165 deg); only the split changes.
-      for (const x of [...wide, ...f]) expect(x.shoulder_extension_deg + x.shoulder_adduction_deg).toBeGreaterThan(100);
+      // Both pulls cover a full arm arc (~95-165 deg); only the split changes.
+      for (const x of [...wide, ...f]) expect(x.shoulder_extension_deg + x.shoulder_adduction_deg).toBeGreaterThan(80);
     }
   });
 

@@ -62,6 +62,8 @@ function landmarkTracks(seq: PoseSequence, window: number): Record<PoseLandmarkN
  * - `*_plane_of_elevation_deg`: which way the upper arm points around the trunk, seen from above: 0 = straight out
  *   to the side (frontal plane), 90 = straight forward (sagittal plane). NaN when the arm is near vertical
  *   (straight up or down), where the direction is undefined.
+ * - `*_humerus_behind_trunk_deg`: upper arm angle out of the trunk's frontal plane (+ = elbow behind the body, the
+ *   arm rotating back around the shoulder past the trunk line; − = elbow in front).
  * - `*_elbow_forward_m`: elbow ahead of the shoulder along the trunk's forward axis (+ = in front of the body).
  *   Projections are taken in a trunk frame (down = shoulders→hips, forward = thighs' direction made perpendicular
  *   to the trunk), so leaning back does not count as shoulder movement.
@@ -132,6 +134,7 @@ export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): 
       const horizontal = Math.hypot(hf, ho);
       put(`${side}_plane_of_elevation_deg`, i, horizontal < 0.25 * norm(humerus) ? Number.NaN : Math.atan2(hf, ho) * RAD_TO_DEG);
       put(`${side}_elbow_forward_m`, i, hf);
+      put(`${side}_humerus_behind_trunk_deg`, i, Math.asin(Math.max(-1, Math.min(1, -hf / norm(humerus)))) * RAD_TO_DEG);
       put(`${side}_elbow_flexion_deg`, i, 180 - jointAngleDeg(shoulder, elbow, wrist));
       put(`${side}_humerothoracic_elevation_deg`, i, angleBetweenDeg(sub(elbow, shoulder), trunkDown));
       put(`${side}_shoulder_ear_gap_ratio`, i, dist(p(`${side}_ear`), shoulder) / shoulderWidth);

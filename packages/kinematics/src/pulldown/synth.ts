@@ -4,7 +4,7 @@
 import { POSE_LANDMARK_NAMES, type PoseLandmarkName, type PoseSequence } from "@optimass/types";
 import { standardExerciseCamera, type CameraPlacement } from "../camera";
 import { renderSequence, type Body } from "../synth-render";
-import { add, cross, dist, norm, rejectFrom, scale, sub, unit, v, type Vec3 } from "../vec3";
+import { add, cross, dist, dot, norm, rejectFrom, scale, sub, unit, v, type Vec3 } from "../vec3";
 
 /** How one synthetic set moves. Times are seconds, distances meters, angles degrees. */
 export interface PulldownProfile {
@@ -21,8 +21,12 @@ export interface PulldownProfile {
   trunkSwingDeg: number;
   /** Shoulder-to-wrist distance at the top as a fraction of full arm length (1 = elbows locked). */
   topReachFraction: number;
-  /** Wrist height relative to the shoulders at the bottom (negative = below shoulder level, bar at the chest). */
-  bottomWristAboveShoulderM: number;
+  /**
+   * Where the pull stops: upper arm angle behind the trunk's frontal plane at the bottom (0 = elbow level with the
+   * trunk line, + = elbow behind the body, the whole arm rotating back around the shoulder; − = elbow still in front).
+   * The bar's bottom height is solved to hit it.
+   */
+  bottomHumerusBehindDeg: number;
   /** Shoulder girdle elevation along the trunk at the top and the bottom (positive = toward the ears). */
   shoulderElevationTopM: number;
   shoulderElevationBottomM: number;
@@ -49,7 +53,7 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   trunkLeanDeg: 12,
   trunkSwingDeg: 4,
   topReachFraction: 0.995,
-  bottomWristAboveShoulderM: -0.05,
+  bottomHumerusBehindDeg: 5,
   shoulderElevationTopM: 0.03,
   shoulderElevationBottomM: -0.02,
   gripHalfWidthM: 0.37,
@@ -66,9 +70,11 @@ export const PULLDOWN_VARIANTS = {
   /** Torso swings back hard to start the bar moving. */
   momentum_swing: { ...GOOD_PULLDOWN, concentricS: 0.6, trunkLeanDeg: 10, trunkSwingDeg: 28, seed: 2 },
   /** Elbows never straighten at the top and the bar stops around the chin. */
-  partial_rom: { ...GOOD_PULLDOWN, topReachFraction: 0.85, bottomWristAboveShoulderM: 0.15, seed: 3 },
+  partial_rom: { ...GOOD_PULLDOWN, topReachFraction: 0.85, bottomHumerusBehindDeg: -10, seed: 3 },
   /** Shoulders ride up toward the ears instead of depressing as the bar comes down. */
   shrug: { ...GOOD_PULLDOWN, shoulderElevationTopM: 0.03, shoulderElevationBottomM: 0.05, seed: 4 },
+  /** Pulls past the trunk line: the whole arm rotates back around the shoulder at the bottom (the old default). */
+  over_pull: { ...GOOD_PULLDOWN, bottomHumerusBehindDeg: 28, seed: 9 },
   /** Bar is let go on the way up instead of being lowered under control. */
   fast_eccentric: { ...GOOD_PULLDOWN, eccentricS: 0.5, seed: 5 },
   /** Closer grip with the elbows travelling in front of the body: more shoulder extension, less adduction. */
@@ -137,8 +143,39 @@ function shoulderMidAt(leanDeg: number): Vec3 {
   return v(0, BODY.trunk * Math.cos(rad(leanDeg)), -BODY.trunk * Math.sin(rad(leanDeg)));
 }
 
+/** Upper arm angle behind the trunk's frontal plane (degrees, + = elbow behind), left arm, body frame. */
+function humerusBehindDeg(pose: Body, leanDeg: number): number {
+  const fwd = v(0, Math.sin(rad(leanDeg)), Math.cos(rad(leanDeg))); // trunk forward, perpendicular to the lean
+  const h = sub(pose.left_elbow, pose.left_shoulder);
+  return (Math.asin(-dot(h, fwd) / norm(h)) * 180) / Math.PI;
+}
+
+const bottomBarCache = new WeakMap<PulldownProfile, number>();
+/** Bar height at the bottom that puts the upper arm `bottomHumerusBehindDeg` behind the trunk (bisection). */
+function bottomBarHeight(p: PulldownProfile): number {
+  const cached = bottomBarCache.get(p);
+  if (cached !== undefined) return cached;
+  const endLean = p.trunkLeanDeg + p.trunkSwingDeg;
+  const endShoulderY = shoulderMidAt(endLean).y + p.shoulderElevationBottomM;
+  // Lower bar → elbow further back. Search between well above and well below the shoulders.
+  let hi = endShoulderY + 0.45;
+  let lo = endShoulderY - 0.25;
+  for (let i = 0; i < 40; i++) {
+    const midU = (hi + lo) / 2;
+    if (humerusBehindDeg(poseWithBottom(1, p, midU), endLean) < p.bottomHumerusBehindDeg) hi = midU;
+    else lo = midU;
+  }
+  const u = (hi + lo) / 2;
+  bottomBarCache.set(p, u);
+  return u;
+}
+
 /** Full 33-point pose in the body frame for bar progress `prog`. */
 export function poseAt(prog: number, p: PulldownProfile): Body {
+  return poseWithBottom(prog, p, bottomBarHeight(p));
+}
+
+function poseWithBottom(prog: number, p: PulldownProfile, bottomU: number): Body {
   const L = v(1, 0, 0);
   const U = v(0, 1, 0);
   const F = v(0, 0, 1);
@@ -154,9 +191,6 @@ export function poseAt(prog: number, p: PulldownProfile): Body {
   const lateral = p.gripHalfWidthM - BODY.shoulderHalfWidth;
   const reach = p.topReachFraction * (BODY.upperArm + BODY.forearm);
   const topU = startShoulder.y + Math.sqrt(Math.max(0, reach ** 2 - lateral ** 2 - BODY.barAheadOfShoulders ** 2));
-  const endLean = p.trunkLeanDeg + p.trunkSwingDeg;
-  const endShoulder = add(shoulderMidAt(endLean), scale(unit(shoulderMidAt(endLean)), p.shoulderElevationBottomM));
-  const bottomU = endShoulder.y + p.bottomWristAboveShoulderM;
   const barU = topU + (bottomU - topU) * prog;
 
   const pose = {} as Body;
