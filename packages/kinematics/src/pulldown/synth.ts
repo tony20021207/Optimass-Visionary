@@ -21,6 +21,9 @@ export interface PulldownProfile {
   trunkSwingDeg: number;
   /** Elbow flexion at the top (0 = elbows locked out). */
   topElbowFlexionDeg: number;
+  /** Where the pull line passes, ahead of the starting shoulders at shoulder height (m). Smaller = bar closer to the
+   *  body, so the arms finish the top more overhead (more shoulder flexion). */
+  lineAheadOfShouldersM: number;
   /** Pull line: the bar travels down a straight line tilted this far from vertical (top end forward). Tony: 12-15°. */
   pullLineDeg: number;
   /**
@@ -65,10 +68,11 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   bottomPauseS: 0.3,
   eccentricS: 2.0,
   topPauseS: 0.5,
-  trunkLeanDeg: 12,
+  trunkLeanDeg: 8,
   trunkSwingDeg: 4,
-  topElbowFlexionDeg: 15,
+  topElbowFlexionDeg: 5,
   pullLineDeg: 13.5,
+  lineAheadOfShouldersM: 0.09,
   bottomForearmOffLineDeg: 10,
   forearmOnLine: true,
   bottomHumerusBehindDeg: 5,
@@ -183,7 +187,7 @@ const pullDir = (p: PulldownProfile) => v(0, Math.cos(rad(p.pullLineDeg)), Math.
 /** Where the bar sits on the pull line: `t` meters up the line from the point level with the starting shoulders. */
 function barOnLine(p: PulldownProfile, t: number): Vec3 {
   const start = add(shoulderMidAt(p.trunkLeanDeg), scale(unit(shoulderMidAt(p.trunkLeanDeg)), p.shoulderElevationTopM));
-  return add(v(0, start.y, start.z + BODY.barAheadOfShoulders), scale(pullDir(p), t));
+  return add(v(0, start.y, start.z + p.lineAheadOfShouldersM), scale(pullDir(p), t));
 }
 
 /** How far the forearm tilts off the pull line (seen from the side) at bar progress `prog`: 0 until the last part of

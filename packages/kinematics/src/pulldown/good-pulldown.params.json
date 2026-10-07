@@ -7,7 +7,7 @@
     {
       "id": "full_stretch_at_top",
       "feature": "elbow_flexion_top_deg",
-      "max": 25,
+      "max": 15,
       "fault": "incomplete_top_rom",
       "why": "Elbows should be close to straight at the top so the lats reach a lengthened position.",
       "placeholder": true
@@ -15,7 +15,7 @@
     {
       "id": "arms_overhead_at_top",
       "feature": "humerothoracic_elevation_top_deg",
-      "min": 125,
+      "min": 135,
       "fault": "incomplete_top_rom",
       "why": "Upper arm should be well overhead at the top (shoulder flexion/abduction near end range).",
       "placeholder": true
