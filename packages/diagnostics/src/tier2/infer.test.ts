@@ -129,3 +129,18 @@ describe("inferRootCauses (lat pulldown)", () => {
     expect(() => inferRootCauses(pulldownSagittalFindings, { version: rules.version })).toThrow(/rules.tier2/);
   });
 });
+
+describe("inferRootCauses (lat pulldown, kinematics-only codes)", () => {
+  const base = pulldownSagittalFindings[0]!;
+  const finding = (id: string, errorCode: string): KinematicFinding => ({ ...base, id, errorCode, ruleId: `lat_pulldown_${errorCode}` });
+
+  it("short bottom range + fast lowering ranks load-too-heavy first", () => {
+    const [top] = inferRootCauses([finding("f1", "incomplete_bottom_rom"), finding("f2", "fast_eccentric")], rules);
+    expect(top!.id).toBe("h_lat_pulldown_load_exceeds_capacity");
+  });
+
+  it("short bottom range + shrugging ranks scapular depression control first", () => {
+    const [top] = inferRootCauses([finding("f1", "incomplete_bottom_rom"), finding("f2", "shoulder_elevation")], rules);
+    expect(top!.id).toBe("h_lat_pulldown_poor_scapular_depression_control");
+  });
+});

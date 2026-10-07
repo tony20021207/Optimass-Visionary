@@ -46,6 +46,12 @@ errorCodes:
   asymmetric_pull:
     label: One side pulls lower or faster than the other
     view: frontal
+  incomplete_bottom_rom:
+    label: Bar stops short of the upper chest (around chin height) at the bottom
+    view: sagittal
+  fast_eccentric:
+    label: Bar rises back up faster than a controlled lowering
+    view: sagittal
 
 screeningTests:
   lat_length_test:
@@ -91,6 +97,13 @@ screeningTests:
     positiveCriterion: >-
       TODO(Tony): confirm the asymmetry cut-off. A clear range or strength difference on the side that
       lagged in the clip.
+  tempo_retest:
+    name: Cued-tempo retest (PLACEHOLDER)
+    procedure: >-
+      TODO(Tony): confirm the tempo. Repeat the set at the same load with a counted lowering phase
+      (e.g. a slow count on the way up), filmed from the same view.
+    positiveCriterion: >-
+      TODO(Tony): confirm. With the cue, the lifter controls the lowering and the rest of the rep stays clean.
   setup_check:
     name: Machine set-up check (PLACEHOLDER)
     procedure: >-
@@ -145,6 +158,10 @@ causes:
         weight: 0.55
       - all: [shoulder_elevation, forward_head]
         weight: 0.3
+      - all: [shoulder_elevation, incomplete_bottom_rom]
+        weight: 0.5
+      - all: [incomplete_bottom_rom]
+        weight: 0.3
 
   - id: load_exceeds_capacity
     category: technique
@@ -161,6 +178,12 @@ causes:
         weight: 0.45
       - all: [asymmetric_pull]
         weight: 0.15
+      - all: [incomplete_bottom_rom, fast_eccentric]
+        weight: 0.6
+      - all: [incomplete_bottom_rom]
+        weight: 0.3
+      - all: [fast_eccentric]
+        weight: 0.3
 
   - id: tight_pec_minor
     category: mobility
@@ -187,6 +210,18 @@ causes:
     patterns:
       - all: [asymmetric_pull]
         weight: 0.55
+
+  - id: uncontrolled_lowering_habit
+    category: technique
+    label: Lets the weight pull the arms back up instead of lowering it under control (PLACEHOLDER)
+    structures:
+      muscles: [latissimus_dorsi]
+      joints: [glenohumeral]
+    screeningTest: tempo_retest
+    baseline: 0.05
+    patterns:
+      - all: [fast_eccentric]
+        weight: 0.4
 
   - id: machine_setup
     category: equipment
