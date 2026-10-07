@@ -109,6 +109,24 @@ describe("placeholder parameters vs synthetic reps", () => {
     expect([...failedFaults(variant)].sort()).toEqual([...faults].sort());
   });
 
+  it("splits the pull into shoulder extension vs adduction from every camera angle", () => {
+    const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    for (const az of AZIMUTHS) {
+      const wide = analyzePulldown(clip("good", az)).reps.map((r) => r.features);
+      const fwd = analyzePulldown(clip("elbows_forward", az)).reps;
+      // The elbows-forward variant is a valid pull: no judged check fails.
+      for (const r of fwd) expect(r.checks.filter((c) => c.status === "fail")).toEqual([]);
+      const f = fwd.map((r) => r.features);
+      // Wide grip, elbows out: mostly adduction. Elbows forward: mostly extension.
+      expect(mean(wide.map((x) => x.extension_share))).toBeLessThan(0.35);
+      expect(mean(f.map((x) => x.extension_share))).toBeGreaterThan(0.75);
+      expect(mean(wide.map((x) => x.plane_of_elevation_mid_deg))).toBeLessThan(30);
+      expect(mean(f.map((x) => x.plane_of_elevation_mid_deg))).toBeGreaterThan(60);
+      // Total arm travel is similar either way (~100-165 deg); only the split changes.
+      for (const x of [...wide, ...f]) expect(x.shoulder_extension_deg + x.shoulder_adduction_deg).toBeGreaterThan(100);
+    }
+  });
+
   it("rejects malformed parameter files", () => {
     expect(() => parsePulldownParams({ exerciseId: "lat_pulldown", checks: [{ id: "x", feature: "nope" }] })).toThrow(/unknown feature/);
     expect(() =>

@@ -3,7 +3,7 @@
 import { POSE_LANDMARK, type PoseLandmarkName, type PoseSequence } from "@optimass/types";
 import type { KinematicSeries } from "../index";
 import { derivative, smooth } from "../signal";
-import { angleBetweenDeg, dist, dot, jointAngleDeg, mid, norm, rejectFrom, RAD_TO_DEG, sub, unit, v, type Vec3 } from "../vec3";
+import { angleBetweenDeg, cross, dist, dot, jointAngleDeg, mid, norm, rejectFrom, RAD_TO_DEG, scale, sub, unit, v, type Vec3 } from "../vec3";
 
 /**
  * Stable metric names. Angles are degrees, angular velocities degrees per second, speeds meters per second,
@@ -53,6 +53,18 @@ function landmarkTracks(seq: PoseSequence, window: number): Record<PoseLandmarkN
  * - `*_elbow_flexion_deg`: 180 minus the shoulder–elbow–wrist angle (0 = straight arm).
  * - `*_humerothoracic_elevation_deg`: angle between the upper arm and the trunk's downward axis
  *   (0 = arm hanging at the side, ~180 = straight overhead). Plane-free, so it mixes flexion and abduction.
+ * - `*_shoulder_extension_cum_deg` / `*_shoulder_adduction_cum_deg`: running total of how far the upper arm has
+ *   rotated about the trunk's side-to-side axis (extension, + = arm moving down/back from in front) and about its
+ *   front-to-back axis (adduction, + = arm moving down toward the side from out wide), from the first frame.
+ *   The difference between two frames is the extension or adduction performed between them. Built by integrating
+ *   frame-to-frame humeral rotation, so it splits a diagonal pull correctly; projecting the arm onto the sagittal
+ *   and frontal planes does not (an arm near overhead sweeps almost the whole arc in both projections).
+ * - `*_plane_of_elevation_deg`: which way the upper arm points around the trunk, seen from above: 0 = straight out
+ *   to the side (frontal plane), 90 = straight forward (sagittal plane). NaN when the arm is near vertical
+ *   (straight up or down), where the direction is undefined.
+ * - `*_elbow_forward_m`: elbow ahead of the shoulder along the trunk's forward axis (+ = in front of the body).
+ *   Projections are taken in a trunk frame (down = shoulders→hips, forward = thighs' direction made perpendicular
+ *   to the trunk), so leaning back does not count as shoulder movement.
  * - `trunk_lean_deg`: trunk (hip midpoint → shoulder midpoint) from vertical in the sagittal plane;
  *   positive = leaning back. "Forward" is taken from the thighs (hip → knee), which point forward when seated.
  * - `hip_flexion_deg`: 180 minus the shoulder–hip–knee angle at the midpoints.
@@ -76,6 +88,7 @@ export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): 
     (metrics[name] ??= new Array<number>(n).fill(Number.NaN))[i] = value;
   };
 
+  const prevHumerus: Record<"left" | "right", Vec3 | undefined> = { left: undefined, right: undefined };
   for (let i = 0; i < n; i++) {
     const p = (name: PoseLandmarkName) => lm[name][i]!;
     const shoulderMid = mid(p("left_shoulder"), p("right_shoulder"));
@@ -86,10 +99,39 @@ export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): 
     const forward = unit(rejectFrom(sub(kneeMid, hipMid), UP));
     const shoulderWidth = dist(p("left_shoulder"), p("right_shoulder"));
 
+    // Trunk frame. Humerus direction is stored as (down, forward, outward) components so that leaning back is not
+    // counted as shoulder movement.
+    const down = unit(trunkDown);
+    const trunkFwd = unit(rejectFrom(forward, down));
+    const leftward = unit(rejectFrom(rejectFrom(sub(p("left_shoulder"), p("right_shoulder")), down), trunkFwd));
     for (const side of ["left", "right"] as const) {
       const shoulder = p(`${side}_shoulder`);
       const elbow = p(`${side}_elbow`);
       const wrist = p(`${side}_wrist`);
+      const humerus = sub(elbow, shoulder);
+      const outward = side === "left" ? leftward : scale(leftward, -1);
+      const hd = dot(humerus, down);
+      const hf = dot(humerus, trunkFwd);
+      const ho = dot(humerus, outward);
+      const u = unit(v(hd, hf, ho));
+      const prev = prevHumerus[side];
+      let ext = 0;
+      let add = 0;
+      if (prev) {
+        // Rotation vector from prev to u, in (down, forward, outward) components. Its outward part is +flexion,
+        // its forward part is -abduction (right-handed: down × forward = outward, outward × down = forward).
+        const axis = cross(prev, u);
+        const s = norm(axis);
+        const k = s < 1e-9 ? 0 : Math.atan2(s, dot(prev, u)) / s;
+        ext = -axis.z * k * RAD_TO_DEG;
+        add = axis.y * k * RAD_TO_DEG;
+      }
+      prevHumerus[side] = u;
+      put(`${side}_shoulder_extension_cum_deg`, i, (i > 0 ? metrics[`${side}_shoulder_extension_cum_deg`]![i - 1]! : 0) + ext);
+      put(`${side}_shoulder_adduction_cum_deg`, i, (i > 0 ? metrics[`${side}_shoulder_adduction_cum_deg`]![i - 1]! : 0) + add);
+      const horizontal = Math.hypot(hf, ho);
+      put(`${side}_plane_of_elevation_deg`, i, horizontal < 0.25 * norm(humerus) ? Number.NaN : Math.atan2(hf, ho) * RAD_TO_DEG);
+      put(`${side}_elbow_forward_m`, i, hf);
       put(`${side}_elbow_flexion_deg`, i, 180 - jointAngleDeg(shoulder, elbow, wrist));
       put(`${side}_humerothoracic_elevation_deg`, i, angleBetweenDeg(sub(elbow, shoulder), trunkDown));
       put(`${side}_shoulder_ear_gap_ratio`, i, dist(p(`${side}_ear`), shoulder) / shoulderWidth);

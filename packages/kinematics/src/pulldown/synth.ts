@@ -26,6 +26,10 @@ export interface PulldownProfile {
   /** Shoulder girdle elevation along the trunk at the top and the bottom (positive = toward the ears). */
   shoulderElevationTopM: number;
   shoulderElevationBottomM: number;
+  /** Half the distance between the hands on the bar (m). Wide overhand ≈ 0.37, close/neutral ≈ 0.22. */
+  gripHalfWidthM: number;
+  /** Where the elbows point as they bend: 0 = out to the sides, 1 = forward. Moves the pull from adduction to extension. */
+  elbowsForward: number;
   /** Head (ears) drifts this far forward of the shoulders, perpendicular to the trunk, as the bar comes down. */
   headForwardM: number;
   /** Right hand stays this much higher than the left at the bottom (an uneven pull). */
@@ -48,6 +52,8 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   bottomWristAboveShoulderM: -0.05,
   shoulderElevationTopM: 0.03,
   shoulderElevationBottomM: -0.02,
+  gripHalfWidthM: 0.37,
+  elbowsForward: 0,
   headForwardM: 0,
   rightHandLagM: 0,
   noiseM: 0.004,
@@ -65,6 +71,8 @@ export const PULLDOWN_VARIANTS = {
   shrug: { ...GOOD_PULLDOWN, shoulderElevationTopM: 0.03, shoulderElevationBottomM: 0.05, seed: 4 },
   /** Bar is let go on the way up instead of being lowered under control. */
   fast_eccentric: { ...GOOD_PULLDOWN, eccentricS: 0.5, seed: 5 },
+  /** Closer grip with the elbows travelling in front of the body: more shoulder extension, less adduction. */
+  elbows_forward: { ...GOOD_PULLDOWN, gripHalfWidthM: 0.22, elbowsForward: 1, seed: 8 },
   /** Chin pokes forward as the bar comes down. */
   forward_head: { ...GOOD_PULLDOWN, headForwardM: 0.06, seed: 7 },
   /** Right arm finishes short of the left. */
@@ -81,7 +89,6 @@ const BODY = {
   forearm: 0.27,
   thigh: 0.43,
   shin: 0.43,
-  gripHalfWidth: 0.37, // wide overhand grip
   barAheadOfShoulders: 0.12,
 };
 
@@ -144,7 +151,7 @@ export function poseAt(prog: number, p: PulldownProfile): Body {
   // Bar path is fixed in space: straight down the cable line, in front of where the shoulders start.
   const startShoulder = add(shoulderMidAt(p.trunkLeanDeg), scale(unit(shoulderMidAt(p.trunkLeanDeg)), p.shoulderElevationTopM));
   const barF = startShoulder.z + BODY.barAheadOfShoulders;
-  const lateral = BODY.gripHalfWidth - BODY.shoulderHalfWidth;
+  const lateral = p.gripHalfWidthM - BODY.shoulderHalfWidth;
   const reach = p.topReachFraction * (BODY.upperArm + BODY.forearm);
   const topU = startShoulder.y + Math.sqrt(Math.max(0, reach ** 2 - lateral ** 2 - BODY.barAheadOfShoulders ** 2));
   const endLean = p.trunkLeanDeg + p.trunkSwingDeg;
@@ -156,8 +163,10 @@ export function poseAt(prog: number, p: PulldownProfile): Body {
   for (const [side, s] of [["left", 1], ["right", -1]] as const) {
     const shoulder = add(shoulderMid, scale(L, s * BODY.shoulderHalfWidth));
     const lag = side === "right" ? p.rightHandLagM * prog : 0;
-    const wristTarget = v(s * BODY.gripHalfWidth, barU + lag, barF);
-    const pole = add(add(scale(L, s), scale(U, -1)), scale(F, -0.3)); // elbows out, down and slightly back
+    const wristTarget = v(s * p.gripHalfWidthM, barU + lag, barF);
+    // Elbows bend toward the pole: out, down and slightly back by default; forward as elbowsForward → 1.
+    const k = p.elbowsForward;
+    const pole = add(add(scale(L, s * (1 - k)), scale(U, -1)), scale(F, -0.3 + 1.3 * k));
     const { elbow, wrist } = solveElbow(shoulder, wristTarget, pole);
     const forearmDir = unit(sub(wrist, elbow));
     const thumbSide = scale(L, -s); // overhand grip: thumbs point toward the midline

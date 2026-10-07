@@ -105,6 +105,11 @@
     { "id": "bottom_pause_time", "feature": "bottom_pause_s", "why": "Reported only.", "placeholder": true },
     { "id": "top_pause_time", "feature": "top_pause_s", "why": "Reported only. Add a min to require a stretch pause at the top.", "placeholder": true },
     { "id": "peak_wrist_speed", "feature": "peak_wrist_speed_mps", "why": "Reported only.", "placeholder": true },
-    { "id": "peak_elbow_flexion_velocity", "feature": "peak_elbow_flexion_vel_dps", "why": "Reported only.", "placeholder": true }
+    { "id": "peak_elbow_flexion_velocity", "feature": "peak_elbow_flexion_vel_dps", "why": "Reported only.", "placeholder": true },
+    { "id": "shoulder_extension", "feature": "shoulder_extension_deg", "why": "Reported only. Degrees of arm travel about the trunk's side-to-side axis (elbows down and back from in front).", "placeholder": true },
+    { "id": "shoulder_adduction", "feature": "shoulder_adduction_deg", "why": "Reported only. Degrees of arm travel about the trunk's front-to-back axis (elbows down to the sides from out wide).", "placeholder": true },
+    { "id": "extension_share", "feature": "extension_share", "why": "Reported only. 0 = pure adduction (wide frontal-plane pull), 1 = pure extension (elbows-forward sagittal pull). Add a min (e.g. 0.6) to require an extension-biased pull.", "placeholder": true },
+    { "id": "arm_plane_during_pull", "feature": "plane_of_elevation_mid_deg", "why": "Reported only. Where the elbows point during the pull: 0 = out to the sides, 90 = straight forward. Add a min to require elbows further in front.", "placeholder": true },
+    { "id": "elbow_forward_at_bottom", "feature": "elbow_forward_bottom_m", "why": "Reported only. Elbow ahead of the shoulder at the bottom (m); negative = behind the body.", "placeholder": true }
   ]
 }

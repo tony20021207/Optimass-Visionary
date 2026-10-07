@@ -15,6 +15,9 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
   per-rep features (`features.ts`), checks against `good-pulldown.params.json` (`evaluate.ts`).
 - Every number in the params file is a placeholder until Tony reviews it. It moves to content/rules/tier1 once M6a
   defines the Tier 1 rule schema; judging reps then belongs to M6a.
+- Shoulder extension vs adduction: integrated from frame-to-frame humeral rotation in a trunk frame
+  (`*_shoulder_extension_cum_deg`, `*_shoulder_adduction_cum_deg`). Don't replace this with sagittal/frontal
+  projection angles: near overhead both projections sweep the full arc and double-count the movement.
 - `pnpm --filter @optimass/kinematics pulldown:report` prints the feature table for every synthetic variant.
 
 ## Capture protocol (decided by Tony, 2026-10-07)

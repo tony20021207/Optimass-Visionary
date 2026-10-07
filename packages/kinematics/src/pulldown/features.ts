@@ -9,6 +9,11 @@ export const PULLDOWN_FEATURES = {
   elbow_flexion_peak_deg: "Elbow flexion at the bottom (largest in the rep, mean of both arms)",
   humerothoracic_elevation_top_deg: "Upper arm vs trunk at the top (largest, mean of both arms)",
   humerothoracic_elevation_bottom_deg: "Upper arm vs trunk at the bottom (smallest, mean of both arms)",
+  shoulder_extension_deg: "Shoulder extension performed from rep start to the bottom: arm rotation about the trunk's side-to-side axis (mean of both arms)",
+  shoulder_adduction_deg: "Shoulder adduction performed from rep start to the bottom: arm rotation about the trunk's front-to-back axis (mean of both arms)",
+  extension_share: "Share of the pull done by extension: extension / (extension + adduction). 0 = pure adduction, 1 = pure extension",
+  plane_of_elevation_mid_deg: "Arm direction during the pull: 0 = out to the side (frontal plane), 90 = forward (sagittal plane); averaged over the pull where defined",
+  elbow_forward_bottom_m: "Elbow ahead of the shoulder at the bottom (m, + = in front of the body)",
   bar_bottom_rel_shoulder_m: "Lowest wrist-midpoint height relative to the shoulders",
   trunk_lean_mean_deg: "Average trunk lean back from vertical",
   trunk_lean_range_deg: "How much the trunk lean changes within the rep",
@@ -47,12 +52,26 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
     return gap[bottomFrame]! - gap[rep.startFrame]!;
   };
   const lean = m("trunk_lean_deg");
+  const performed = (name: string) =>
+    mean((["left", "right"] as const).map((side) => {
+      const cum = series.metrics[`${side}_${name}`]!;
+      return cum[bottomFrame]! - cum[rep.startFrame]!;
+    }));
+  const ext = performed("shoulder_extension_cum_deg");
+  const add = performed("shoulder_adduction_cum_deg");
 
   return {
     elbow_flexion_top_deg: both(min, "elbow_flexion_deg"),
     elbow_flexion_peak_deg: both(max, "elbow_flexion_deg"),
     humerothoracic_elevation_top_deg: both(max, "humerothoracic_elevation_deg"),
     humerothoracic_elevation_bottom_deg: both(min, "humerothoracic_elevation_deg"),
+    shoulder_extension_deg: ext,
+    shoulder_adduction_deg: add,
+    extension_share: Math.abs(ext) + Math.abs(add) === 0 ? Number.NaN : Math.abs(ext) / (Math.abs(ext) + Math.abs(add)),
+    plane_of_elevation_mid_deg: mean(
+      [...m("left_plane_of_elevation_deg", cFrom, cTo), ...m("right_plane_of_elevation_deg", cFrom, cTo)].filter((x) => !Number.isNaN(x)),
+    ),
+    elbow_forward_bottom_m: mean([series.metrics.left_elbow_forward_m![bottomFrame]!, series.metrics.right_elbow_forward_m![bottomFrame]!]),
     bar_bottom_rel_shoulder_m: min(height),
     trunk_lean_mean_deg: mean(lean),
     trunk_lean_range_deg: max(lean) - min(lean),
