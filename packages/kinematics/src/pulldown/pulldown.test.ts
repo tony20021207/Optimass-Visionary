@@ -78,14 +78,15 @@ describe("placeholder parameters vs synthetic reps", () => {
     }
   });
 
+  // Fault codes match the Tier 1 error codes in content/rules/tier2/lat_pulldown.yaml where one exists.
   it.each([
-    ["momentum_swing", "momentum_swing"],
-    ["partial_rom", "partial_rom"],
-    ["shrug", "shrug"],
-    ["fast_eccentric", "fast_eccentric"],
-    ["asymmetric", "asymmetry"],
-  ] as const)("%s trips only the %s checks", (variant, fault) => {
-    expect([...failedFaults(variant)]).toEqual([fault]);
+    ["momentum_swing", ["excessive_torso_lean"]],
+    ["partial_rom", ["incomplete_top_rom", "incomplete_bottom_rom"]],
+    ["shrug", ["shoulder_elevation"]],
+    ["fast_eccentric", ["fast_eccentric"]],
+    ["asymmetric", ["asymmetric_pull"]],
+  ] as const)("%s trips only its own checks: %j", (variant, faults) => {
+    expect([...failedFaults(variant)].sort()).toEqual([...faults].sort());
   });
 
   it("rejects malformed parameter files", () => {

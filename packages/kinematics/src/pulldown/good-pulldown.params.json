@@ -1,5 +1,5 @@
 {
-  "$comment": "DRAFT for Tony to edit. Every number is a PLACEHOLDER picked so the synthetic good rep passes and each synthetic fault fails; none is a clinical or literature value yet. Set min and/or max per check; leave both out to report the number without judging it. Feature definitions: src/pulldown/features.ts. Once the Tier 1 rule schema exists (M6a) this moves to content/rules/tier1/.",
+  "$comment": "DRAFT for Tony to edit. Every number is a PLACEHOLDER picked so the synthetic good rep passes and each synthetic fault fails; none is a clinical or literature value yet. Set min and/or max per check; leave both out to report the number without judging it. Feature definitions: src/pulldown/features.ts. `fault` values are Tier 1 error codes and match content/rules/tier2/lat_pulldown.yaml where that file has a code; incomplete_bottom_rom and fast_eccentric are not in it yet. Once the Tier 1 rule schema exists (M6a) this moves to content/rules/tier1/.",
   "exerciseId": "lat_pulldown",
   "version": "0.1.0-draft",
   "reviewedBy": null,
@@ -8,7 +8,7 @@
       "id": "full_stretch_at_top",
       "feature": "elbow_flexion_top_deg",
       "max": 25,
-      "fault": "partial_rom",
+      "fault": "incomplete_top_rom",
       "why": "Elbows should be close to straight at the top so the lats reach a lengthened position.",
       "placeholder": true
     },
@@ -16,7 +16,7 @@
       "id": "arms_overhead_at_top",
       "feature": "humerothoracic_elevation_top_deg",
       "min": 135,
-      "fault": "partial_rom",
+      "fault": "incomplete_top_rom",
       "why": "Upper arm should be well overhead at the top (shoulder flexion/abduction near end range).",
       "placeholder": true
     },
@@ -24,7 +24,7 @@
       "id": "bar_reaches_chest",
       "feature": "bar_bottom_rel_shoulder_m",
       "max": 0.05,
-      "fault": "partial_rom",
+      "fault": "incomplete_bottom_rom",
       "why": "Wrists should come down to about shoulder level (bar at the upper chest), not stop at the chin.",
       "placeholder": true
     },
@@ -32,7 +32,7 @@
       "id": "arms_down_at_bottom",
       "feature": "humerothoracic_elevation_bottom_deg",
       "max": 65,
-      "fault": "partial_rom",
+      "fault": "incomplete_bottom_rom",
       "why": "Upper arms should finish close to the trunk (shoulder adduction/extension near end range).",
       "placeholder": true
     },
@@ -41,7 +41,7 @@
       "feature": "trunk_lean_mean_deg",
       "min": 0,
       "max": 30,
-      "fault": "excessive_lean",
+      "fault": "excessive_torso_lean",
       "why": "A slight lean back is normal; a big lean turns it into a row.",
       "placeholder": true
     },
@@ -49,7 +49,7 @@
       "id": "trunk_stays_still",
       "feature": "trunk_lean_range_deg",
       "max": 12,
-      "fault": "momentum_swing",
+      "fault": "excessive_torso_lean",
       "why": "Trunk angle should change little within a rep; large changes mean the torso is swinging the weight.",
       "placeholder": true
     },
@@ -57,7 +57,7 @@
       "id": "no_torso_rocking",
       "feature": "trunk_lean_peak_vel_dps",
       "max": 40,
-      "fault": "momentum_swing",
+      "fault": "excessive_torso_lean",
       "why": "Fast trunk extension during the pull is the signature of using momentum.",
       "placeholder": true
     },
@@ -65,7 +65,7 @@
       "id": "shoulders_depress",
       "feature": "shoulder_depression_ratio",
       "min": 0.03,
-      "fault": "shrug",
+      "fault": "shoulder_elevation",
       "why": "Shoulders should move away from the ears (scapular depression) as the bar comes down.",
       "placeholder": true
     },
@@ -81,7 +81,7 @@
       "id": "bar_stays_level",
       "feature": "wrist_height_asymmetry_m",
       "max": 0.04,
-      "fault": "asymmetry",
+      "fault": "asymmetric_pull",
       "why": "Both hands should arrive together; a tilted bar means one side is doing less.",
       "placeholder": true
     },
@@ -89,7 +89,7 @@
       "id": "elbows_match",
       "feature": "elbow_flexion_asymmetry_deg",
       "max": 10,
-      "fault": "asymmetry",
+      "fault": "asymmetric_pull",
       "why": "Left and right elbow angles should track each other.",
       "placeholder": true
     },
