@@ -2,8 +2,11 @@
   "$comment": "How OptiMass expects clips to be filmed. Decided by Tony (2026-10-07): exercises at 45 degrees rear-side, posture check straight-on from 4 sides at a set distance and height. Synthetic clips, tests and the capture UI all read this file. Distances are meters, angles degrees.",
   "version": "0.1.0",
   "phone": {
+    "camera": "rear",
+    "lens": "main (1x)",
+    "facingMode": "environment",
     "verticalFovDeg": 69,
-    "note": "Typical 1x phone camera (about 26 mm equivalent) held in portrait. Used to place synthetic cameras and check framing; real phones vary."
+    "note": "Rear main camera only. Front cameras are usually mirrored (which swaps left and right in the analysis), wider-angle with more distortion, and lower quality; the ultrawide (0.5x) bends straight lines. 69 degrees is a typical 1x lens (about 26 mm equivalent) held in portrait, used to place synthetic cameras and check framing; real phones vary."
   },
   "exercise": {
     "label": "Standard exercise view: 45° behind and to one side",
