@@ -26,6 +26,8 @@ export interface PulldownProfile {
   /** Shoulder girdle elevation along the trunk at the top and the bottom (positive = toward the ears). */
   shoulderElevationTopM: number;
   shoulderElevationBottomM: number;
+  /** Head (ears) drifts this far forward of the shoulders, perpendicular to the trunk, as the bar comes down. */
+  headForwardM: number;
   /** Right hand stays this much higher than the left at the bottom (an uneven pull). */
   rightHandLagM: number;
   /** Std. dev. of per-landmark jitter added to world coordinates, mimicking estimation noise. */
@@ -46,6 +48,7 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   bottomWristAboveShoulderM: -0.05,
   shoulderElevationTopM: 0.03,
   shoulderElevationBottomM: -0.02,
+  headForwardM: 0,
   rightHandLagM: 0,
   noiseM: 0.004,
   seed: 1,
@@ -62,6 +65,8 @@ export const PULLDOWN_VARIANTS = {
   shrug: { ...GOOD_PULLDOWN, shoulderElevationTopM: 0.03, shoulderElevationBottomM: 0.05, seed: 4 },
   /** Bar is let go on the way up instead of being lowered under control. */
   fast_eccentric: { ...GOOD_PULLDOWN, eccentricS: 0.5, seed: 5 },
+  /** Chin pokes forward as the bar comes down. */
+  forward_head: { ...GOOD_PULLDOWN, headForwardM: 0.06, seed: 7 },
   /** Right arm finishes short of the left. */
   asymmetric: { ...GOOD_PULLDOWN, rightHandLagM: 0.08, seed: 6 },
 } satisfies Record<string, PulldownProfile>;
@@ -175,7 +180,7 @@ export function poseAt(prog: number, p: PulldownProfile): Body {
 
   // Head rides on the trunk. Its "forward" is the trunk's forward tilted with the lean.
   const headF = unit(cross(L, trunkAxis)); // L × up-ish = forward
-  const head = add(neckBase, scale(trunkAxis, 0.17));
+  const head = add(add(neckBase, scale(trunkAxis, 0.17)), scale(headF, p.headForwardM * prog));
   const at = (l: number, u: number, f: number) => add(add(add(head, scale(L, l)), scale(trunkAxis, u)), scale(headF, f));
   pose.nose = at(0, 0, 0.1);
   for (const [side, s] of [["left", 1], ["right", -1]] as const) {

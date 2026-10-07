@@ -57,6 +57,8 @@ function landmarkTracks(seq: PoseSequence, window: number): Record<PoseLandmarkN
  *   positive = leaning back. "Forward" is taken from the thighs (hip → knee), which point forward when seated.
  * - `hip_flexion_deg`: 180 minus the shoulder–hip–knee angle at the midpoints.
  * - `*_shoulder_ear_gap_ratio`: ear-to-shoulder distance divided by shoulder width. Drops when the shoulders shrug.
+ * - `head_forward_m`: ear midpoint ahead of the shoulder midpoint, perpendicular to the trunk (0 = ears in line
+ *   with the trunk). Uses the ears, which stay visible from behind.
  * - `wrist_mid_height_m`: wrist midpoint height above the shoulder midpoint (bar-height proxy).
  * - `wrist_height_diff_m`: left wrist height minus right (bar tilt).
  * - `elbow_flexion_diff_deg`: left minus right elbow flexion.
@@ -94,6 +96,8 @@ export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): 
     }
     put("trunk_lean_deg", i, Math.atan2(-dot(trunk, forward), dot(trunk, UP)) * RAD_TO_DEG);
     put("hip_flexion_deg", i, 180 - jointAngleDeg(shoulderMid, hipMid, kneeMid));
+    const trunkForward = unit(rejectFrom(forward, trunk));
+    put("head_forward_m", i, dot(sub(mid(p("left_ear"), p("right_ear")), shoulderMid), trunkForward));
 
     const wristMid = mid(p("left_wrist"), p("right_wrist"));
     put("wrist_mid_height_m", i, dot(sub(wristMid, shoulderMid), UP));
