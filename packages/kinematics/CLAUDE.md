@@ -8,3 +8,11 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
 - May import: `@optimass/types`. Nothing from apps/web or other lanes' packages not listed here.
 - Tests: `pnpm --filter @optimass/kinematics test`. Use fixtures from `@optimass/types/fixtures`, not live services.
 - Clinical values (thresholds, weights, norms, dosages) come from content/, authored by Tony. Never hard-code them.
+
+## Pulldown experiment (src/pulldown/)
+- Synthetic lat pulldown clips (good + 5 faults) built as a 3D stick figure in MediaPipe's 33-landmark layout: `synth.ts`.
+- Per-frame metrics from world landmarks (`metrics.ts`), rep segmentation on bar height (`segment.ts`),
+  per-rep features (`features.ts`), checks against `good-pulldown.params.json` (`evaluate.ts`).
+- Every number in the params file is a placeholder until Tony reviews it. It moves to content/rules/tier1 once M6a
+  defines the Tier 1 rule schema; judging reps then belongs to M6a.
+- `pnpm --filter @optimass/kinematics pulldown:report` prints the feature table for every synthetic variant.
