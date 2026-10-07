@@ -34,4 +34,5 @@ export * from "./vec3";
 export * from "./signal";
 export * as pulldown from "./pulldown";
 export * as posture from "./posture";
+export * as body from "./body";
 export * from "./camera";

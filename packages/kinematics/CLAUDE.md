@@ -26,3 +26,10 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
 - Metrics are computed in 3D world coordinates, so they do not depend on the view; the view changes which
   landmarks are visible and how much depth noise each metric picks up.
 - `CameraView` in @optimass/types has no oblique value yet, so 45° clips are tagged "sagittal" (TODO in camera.ts).
+
+## Personal skeleton (src/body/)
+- `calibrateSkeleton` turns the 4 posture captures into segment lengths, proportions (e.g. thigh_to_shin) and
+  left-right differences. Pass the user's height to convert to real meters.
+- `fitToSkeleton` holds each limb bone at its calibrated length, trusting image-plane x/y over depth z.
+  `analyzePulldown(seq, params, { skeleton })` fits before measuring and reports per-frame bone error.
+- Trunk and shoulder width are proportions only, never fitting constraints (the shoulder girdle moves).

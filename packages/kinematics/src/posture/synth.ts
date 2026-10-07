@@ -44,10 +44,10 @@ export const POSTURE_VARIANTS = {
 } satisfies Record<string, PostureProfile>;
 export type PostureVariant = keyof typeof POSTURE_VARIANTS;
 
-export const STANDING_HIP_HEIGHT_M = 0.92;
+export const STANDING_HIP_HEIGHT_M = 0.94;
 export const STANDING_WAIST_HEIGHT_M = 1.0;
 const THIGH = 0.43;
-const SHIN = 0.41;
+const SHIN = 0.43; // same body as the synthetic pulldown lifter, so one calibration fits both
 const rad = (d: number) => (d * Math.PI) / 180;
 
 export function standingPose(p: PostureProfile): Body {
