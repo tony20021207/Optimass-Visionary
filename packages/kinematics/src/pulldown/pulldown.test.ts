@@ -121,7 +121,7 @@ describe("placeholder parameters vs synthetic reps", () => {
 
   // Fault codes match the Tier 1 error codes in content/rules/tier2/lat_pulldown.yaml where one exists.
   it.each([
-    ["momentum_swing", ["excessive_torso_lean"]],
+    ["momentum_swing", ["excessive_torso_lean", "yanking"]],
     ["partial_rom", ["incomplete_top_rom", "incomplete_bottom_rom"]],
     ["shrug", ["shoulder_elevation"]],
     ["fast_eccentric", ["fast_eccentric"]],

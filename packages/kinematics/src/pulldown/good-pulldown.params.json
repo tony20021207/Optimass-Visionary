@@ -129,9 +129,9 @@
     {
       "id": "no_yank",
       "feature": "wrist_peak_acc_mps2",
-      "max": 9,
+      "max": 6.5,
       "fault": "yanking",
-      "why": "The bar should build speed smoothly off the top, not be snapped down. Synthetic: good rep ~5 m/s2, momentum swing ~8, yanked ~10 (Tony, 2026-10-09).",
+      "why": "The bar should build speed smoothly off the top, not be snapped down. Synthetic: good rep ~5 m/s2 (other faults up to 5.4), momentum swing ~8, yanked ~10. Tony (2026-10-09): a torso swing counts as a yank too.",
       "placeholder": true
     },
     {
