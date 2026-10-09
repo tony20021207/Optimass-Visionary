@@ -204,6 +204,20 @@ describe("pulldown variations", () => {
     expect(elevation(20) - elevation(0)).toBeGreaterThan(10);
   });
 
+  it("underhand keeps the forearm on the cable (side view) with the elbow below the hands (Tony, 2026-10-09)", () => {
+    const p = { ...pulldownProfileFor("narrow_underhand"), noiseM: 0 };
+    expect(p.forearmOnLine).toBe(true);
+    const side = (a: { y: number; z: number }) => (Math.atan2(a.z, a.y) * 180) / Math.PI;
+    for (const prog of [0.2, 0.4, 0.6, 0.75]) {
+      const b = poseAt(prog, p);
+      const w = b.left_wrist;
+      const e = b.left_elbow;
+      const pulley = { y: p.pulleyAboveHipM, z: 0.43 + p.pulleyAheadOfKneeM };
+      expect(e.y).toBeLessThan(w.y);
+      expect(Math.abs(side({ y: w.y - e.y, z: w.z - e.z }) - side({ y: pulley.y - w.y, z: pulley.z - w.z }))).toBeLessThan(2);
+    }
+  });
+
   it("puts a fault on top of a variation and keeps the variation's grip", () => {
     const p = pulldownProfileFor("narrow_underhand", "fast_eccentric");
     expect(p.gripType).toBe("underhand");

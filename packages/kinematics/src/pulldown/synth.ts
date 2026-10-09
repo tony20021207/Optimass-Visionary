@@ -151,12 +151,13 @@ export type PulldownVariant = keyof typeof PULLDOWN_VARIANTS;
 
 /**
  * Pulldown variations (grip and attachment). wide_overhand is Tony's baseline; the others are PLACEHOLDER starting
- * points for Tony to tune in Motion Lab and paste back. Close grips pull with the elbows in front (more shoulder
- * extension), so the forearm is not held on the cable line there.
+ * points for Tony to tune in Motion Lab and paste back. Underhand keeps the forearms on the cable line (Tony, 2026-10-09);
+ * with the hands this close the elbows swing out mid-pull to stay on it, and the forearm breaks off the line only where
+ * the arm can't reach it (last ~20% of the pull). The V-handle and neutral bar still pull with free elbows.
  */
 export const PULLDOWN_SETUPS = {
   wide_overhand: GOOD_PULLDOWN,
-  narrow_underhand: { ...GOOD_PULLDOWN, gripType: "underhand", bottomArmElevationDeg: 0, gripWidthXShoulder: 1.0, elbowsForward: 1, forearmOnLine: false, lineAheadOfShouldersM: 0.16 },
+  narrow_underhand: { ...GOOD_PULLDOWN, gripType: "underhand", bottomArmElevationDeg: 0, gripWidthXShoulder: 1.0, elbowsForward: 1, forearmOnLine: true, lineAheadOfShouldersM: 0.16 },
   // Hands this close pass in front of the chest, so the line sits further forward and the pull stops with the elbows
   // just in front of the trunk line (handle at the upper chest).
   v_handle: {
@@ -315,9 +316,11 @@ const topBendWeight = (prog: number) => {
 };
 
 /**
- * Elbow for a shoulder and wrist with the forearm held on the cable line: seen from the side, the forearm points along
- * `dir`, tilted `offLineDeg` forward of it (+ = elbow dropping behind the line). The elbow lies on a circle around the
- * shoulder–wrist axis; of the (up to two) points meeting the condition, the one nearer `pole` is used.
+ * Elbow for a shoulder and wrist with the forearm held on the cable line: seen from the side, the forearm points up
+ * along `dir`, tilted `offLineDeg` forward of it (+ = elbow dropping behind the line). The elbow lies on a circle around
+ * the shoulder–wrist axis; of the points meeting the condition, the one nearest `pole` is used. Where no point meets it
+ * (close grips with the hands near the chest: the elbow can't reach that far below the hands), the forearm tilts off the
+ * line as little as the arm allows.
  */
 function solveElbowOnLine(shoulder: Vec3, wrist: Vec3, dir: Vec3, offLineDeg: number, pole: Vec3): { elbow: Vec3; wrist: Vec3 } {
   const a = BODY.upperArm;
@@ -331,18 +334,42 @@ function solveElbowOnLine(shoulder: Vec3, wrist: Vec3, dir: Vec3, offLineDeg: nu
   const c = add(shoulder, scale(u, x));
   const e1 = unit(rejectFrom(pole, u));
   const e2 = cross(u, e1);
-  const n = v(0, -dir.z, dir.y); // in the side view, perpendicular to the line, pointing forward
-  // dot(w - elbow, n) = b sin(off)  ⇔  A cos ψ + B sin ψ = K, elbow = c + r (cos ψ e1 + sin ψ e2)
-  const A = r * dot(e1, n);
-  const B = r * dot(e2, n);
-  const K = dot(sub(w, c), n) - b * Math.sin(rad(offLineDeg));
-  const R = Math.hypot(A, B);
-  const base = Math.atan2(B, A);
-  const spread = R < 1e-9 ? 0 : Math.acos(Math.max(-1, Math.min(1, K / R)));
-  // ψ = 0 is the pole direction; take the solution closest to it.
-  const wrapPi = (t: number) => Math.atan2(Math.sin(t), Math.cos(t));
-  const psi = [base + spread, base - spread].map(wrapPi).sort((p1, p2) => Math.abs(p1) - Math.abs(p2))[0]!;
-  return { elbow: add(c, add(scale(e1, r * Math.cos(psi)), scale(e2, r * Math.sin(psi)))), wrist: w };
+  const elbowAt = (psi: number) => add(c, add(scale(e1, r * Math.cos(psi)), scale(e2, r * Math.sin(psi))));
+  // Side-view angle of the forearm (elbow → wrist) from the cable, minus the wanted break; wrapped to ±180°.
+  const target = Math.atan2(dir.z, dir.y) + rad(offLineDeg);
+  const residual = (psi: number) => {
+    const f = sub(w, elbowAt(psi));
+    const e = Math.atan2(f.z, f.y) - target;
+    return Math.atan2(Math.sin(e), Math.cos(e));
+  };
+  // ψ = 0 is the pole direction. Scan the circle for exact solutions (sign changes, not the ±180° wrap) and keep the
+  // one nearest the pole; failing that, the smallest tilt.
+  const N = 120;
+  let bestPsi = 0;
+  let bestAbs = Infinity;
+  let bestRoot = NaN;
+  for (let i = 0; i < N; i++) {
+    const p0 = -Math.PI + (2 * Math.PI * i) / N;
+    const p1 = p0 + (2 * Math.PI) / N;
+    const r0 = residual(p0);
+    const r1 = residual(p1);
+    if (Math.abs(r0) < bestAbs) {
+      bestAbs = Math.abs(r0);
+      bestPsi = p0;
+    }
+    if (r0 * r1 <= 0 && Math.abs(r0 - r1) < Math.PI) {
+      let lo = p0;
+      let hi = p1;
+      for (let k = 0; k < 30; k++) {
+        const m = (lo + hi) / 2;
+        if (residual(lo) * residual(m) <= 0) hi = m;
+        else lo = m;
+      }
+      const root = (lo + hi) / 2;
+      if (Number.isNaN(bestRoot) || Math.abs(root) < Math.abs(bestRoot)) bestRoot = root;
+    }
+  }
+  return { elbow: elbowAt(Number.isNaN(bestRoot) ? bestPsi : bestRoot), wrist: w };
 }
 
 /**
