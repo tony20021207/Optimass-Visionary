@@ -9,6 +9,7 @@ import {
   analyzePulldown,
   barTravelFor,
   parsePulldownParams,
+  poseAt,
   pulldownSeries,
   segmentLength,
   synthesizePulldown,
@@ -21,6 +22,21 @@ const at = (azimuthDeg: number) => ({ azimuthDeg, heightM: PULLDOWN_WAIST_HEIGHT
 const clip = (variant: PulldownVariant, azimuthDeg = 135) => synthesizePulldown(PULLDOWN_VARIANTS[variant], { camera: at(azimuthDeg) });
 
 describe("synthetic pulldown clips", () => {
+  it("bend the elbows out to the side at the top, not straight back (Tony, 2026-10-09)", () => {
+    const b = poseAt(0, { ...GOOD_PULLDOWN, noiseM: 0 });
+    const s = b.left_shoulder;
+    const e = b.left_elbow;
+    const w = b.left_wrist;
+    const sw = [w.x - s.x, w.y - s.y, w.z - s.z];
+    const n = Math.hypot(...sw);
+    const u = sw.map((c) => c / n);
+    const se = [e.x - s.x, e.y - s.y, e.z - s.z];
+    const along = se[0]! * u[0]! + se[1]! * u[1]! + se[2]! * u[2]!;
+    const [outward, , back] = se.map((c, i) => c - along * u[i]!);
+    expect(outward!).toBeGreaterThan(0.005);
+    expect(Math.abs(back!)).toBeLessThan(outward!);
+  });
+
   it("keep segment lengths constant (a rigid stick figure)", () => {
     const seq = synthesizePulldown({ ...GOOD_PULLDOWN, noiseM: 0 });
     for (const f of [0, 40, 80]) {

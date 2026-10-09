@@ -206,6 +206,16 @@ function forearmOffLineAt(prog: number, breakDeg: number): number {
 }
 /** Share of the bar's travel, at the bottom, over which the forearm leaves the pull line. */
 const FOREARM_BREAK_FRACTION = 0.25;
+/**
+ * Share of the bar's travel, at the top, over which the elbow moves from its natural bend (out to the side, toward the
+ * pole) onto the forearm-on-line solution. With only ~5° of bend the on-line constraint would push the elbow straight
+ * back, so the top bend would show in the side view only; a soft elbow at the top shows from the front too.
+ */
+const TOP_BEND_FRACTION = 0.15;
+const topBendWeight = (prog: number) => {
+  const x = Math.min(1, Math.max(0, prog / TOP_BEND_FRACTION));
+  return 1 - x * x * (3 - 2 * x);
+};
 
 /**
  * Elbow for a shoulder and wrist with the forearm held on the cable line: seen from the side, the forearm points along
@@ -236,6 +246,22 @@ function solveElbowOnLine(shoulder: Vec3, wrist: Vec3, dir: Vec3, offLineDeg: nu
   const wrapPi = (t: number) => Math.atan2(Math.sin(t), Math.cos(t));
   const psi = [base + spread, base - spread].map(wrapPi).sort((p1, p2) => Math.abs(p1) - Math.abs(p2))[0]!;
   return { elbow: add(c, add(scale(e1, r * Math.cos(psi)), scale(e2, r * Math.sin(psi)))), wrist: w };
+}
+
+/**
+ * Mixes two elbow solutions for the same shoulder and wrist (weight 1 = `a`), keeping the result on the elbow circle so
+ * segment lengths stay exact.
+ */
+function blendElbow(shoulder: Vec3, a: { elbow: Vec3; wrist: Vec3 }, b: { elbow: Vec3; wrist: Vec3 }, wA: number): { elbow: Vec3; wrist: Vec3 } {
+  if (wA <= 0) return b;
+  if (wA >= 1) return a;
+  const u = unit(sub(a.wrist, shoulder));
+  const mid = add(scale(a.elbow, wA), scale(b.elbow, 1 - wA));
+  const c = add(shoulder, scale(u, dot(sub(a.elbow, shoulder), u)));
+  const r = norm(sub(a.elbow, c));
+  const dirOut = rejectFrom(sub(mid, c), u);
+  if (norm(dirOut) < 1e-9) return b;
+  return { elbow: add(c, scale(unit(dirOut), r)), wrist: a.wrist };
 }
 
 interface BarTravel {
@@ -361,9 +387,9 @@ function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: nu
     // Elbows bend toward the pole: out, down and slightly back by default; forward as elbowsForward → 1.
     const k = p.elbowsForward;
     const pole = add(add(scale(L, s * (1 - k)), scale(U, -1)), scale(F, -0.3 + 1.3 * k));
-    const { elbow, wrist } = p.forearmOnLine
-      ? solveElbowOnLine(shoulder, wristTarget, dir, offLine, pole)
-      : solveElbow(shoulder, wristTarget, pole);
+    const free = solveElbow(shoulder, wristTarget, pole);
+    const onLine = p.forearmOnLine ? solveElbowOnLine(shoulder, wristTarget, dir, offLine, pole) : free;
+    const { elbow, wrist } = blendElbow(shoulder, free, onLine, p.forearmOnLine ? topBendWeight(prog) : 1);
     const forearmDir = unit(sub(wrist, elbow));
     const thumbSide = scale(L, -s); // overhand grip: thumbs point toward the midline
     pose[`${side}_shoulder`] = shoulder;
