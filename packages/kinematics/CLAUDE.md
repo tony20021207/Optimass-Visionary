@@ -27,6 +27,9 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
   pulley 1.53 m above the hips and 0.22 m behind the knees. Tier 1's pulley assumption (MetricOptions) uses the same
   position. New fault codes not yet in the Tier 2 YAML: excessive_shoulder_extension, bar_path_off_line,
   forearm_off_line.
+- Forearms on the line of pull in the FRONT view too, over the bottom 80% of the pull (Tony, 2026-10-09): check
+  forearms_on_line_front. Grip formula in `grip.ts` (best fit: hands under the middle of the elbow's sideways swing;
+  2.2x on the synthetic lifter); with a skeleton, analyzePulldown reports recommendedGrip and grip_vs_recommended.
 - `pnpm --filter @optimass/kinematics pulldown:report` prints the feature table for every synthetic variant.
 
 ## Capture protocol (decided by Tony, 2026-10-07)

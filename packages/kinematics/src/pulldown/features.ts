@@ -20,6 +20,7 @@ export const PULLDOWN_FEATURES = {
   pull_line_deg: "Bar path angle from vertical, top of the rep to the bottom (+ = bar starts ahead and comes back toward the body)",
   forearm_off_line_deg: "Forearm vs the cable (line of force, pulley assumed above the knees), seen from the side, over the first three quarters of the pull (mean absolute angle, both arms)",
   forearm_off_line_bottom_deg: "Forearm vs the cable at the bottom (+ = elbows dropped behind the line; mean of both arms)",
+  forearm_front_tilt_max_deg: "Front view: largest forearm tilt from vertical (the line of pull) over the bottom 80% of the pull down (mean of both arms per frame)",
   bar_bottom_rel_shoulder_m: "Lowest wrist-midpoint height relative to the shoulders",
   trunk_lean_mean_deg: "Average trunk lean back from vertical",
   trunk_lean_range_deg: "How much the trunk lean changes within the rep",
@@ -65,6 +66,14 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
     series.metrics[`${side}_forearm_pitch_deg`]![i]! - series.metrics.cable_pitch_deg![i]!;
   const onLineTo = rep.startFrame + Math.round((bottomFrame - rep.startFrame) * 0.75);
   const onLineFrames = Array.from({ length: Math.max(1, onLineTo - rep.startFrame + 1) }, (_, k) => rep.startFrame + k);
+  // Bottom 80% of the pull down: from 20% of the bar's travel to the bottom.
+  const topH = height[0]!;
+  const bottomH = min(height);
+  const front = (i: number) =>
+    mean([Math.abs(series.metrics.left_forearm_front_tilt_deg![i]!), Math.abs(series.metrics.right_forearm_front_tilt_deg![i]!)]);
+  const lowerFrames = Array.from({ length: bottomFrame - rep.startFrame + 1 }, (_, k) => rep.startFrame + k).filter(
+    (i) => (topH - series.metrics.wrist_mid_height_m![i]!) >= 0.2 * (topH - bottomH),
+  );
   const performed = (name: string) =>
     mean((["left", "right"] as const).map((side) => {
       const cum = series.metrics[`${side}_${name}`]!;
@@ -94,6 +103,7 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
     pull_line_deg: pullLine,
     forearm_off_line_deg: mean(onLineFrames.flatMap((i) => [Math.abs(offLine("left", i)), Math.abs(offLine("right", i))])),
     forearm_off_line_bottom_deg: mean([offLine("left", bottomFrame), offLine("right", bottomFrame)]),
+    forearm_front_tilt_max_deg: max(lowerFrames.map(front)),
     bar_bottom_rel_shoulder_m: min(height),
     trunk_lean_mean_deg: mean(lean),
     trunk_lean_range_deg: max(lean) - min(lean),

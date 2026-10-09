@@ -55,7 +55,7 @@ describe("fitting a 45° clip to the skeleton", () => {
   it("reports the grip against the one the skeleton's arm lengths call for", () => {
     const report = pulldown.analyzePulldown(pulldown.synthesizePulldown(pulldown.GOOD_PULLDOWN), undefined, { skeleton });
     expect(report.recommendedGrip?.gripWidthXShoulder).toBeGreaterThan(1);
-    // The baseline's 2.2x is wider than the vertical-forearm grip, so the ratio sits above 1.
-    for (const r of report.reps) expect(r.features.grip_vs_recommended).toBeGreaterThan(1);
+    // The 2.2x baseline is the best-fit grip for the synthetic lifter, so the ratio sits near 1.
+    for (const r of report.reps) expect(Math.abs(r.features.grip_vs_recommended! - 1)).toBeLessThan(0.1);
   });
 });

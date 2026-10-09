@@ -125,7 +125,8 @@ describe("placeholder parameters vs synthetic reps", () => {
     ["partial_rom", ["incomplete_top_rom", "incomplete_bottom_rom"]],
     ["shrug", ["shoulder_elevation"]],
     ["fast_eccentric", ["fast_eccentric"]],
-    ["over_pull", ["excessive_shoulder_extension"]],
+    // Rotating the whole arm back swings the elbows in behind the hands, so the forearms leave the line of pull too.
+    ["over_pull", ["excessive_shoulder_extension", "forearm_off_line"]],
     // Close grip, elbows in front: the forearm cannot stay on the line of pull.
     ["elbows_forward", ["forearm_off_line"]],
     ["asymmetric", ["asymmetric_pull"]],
@@ -203,7 +204,11 @@ describe("pulldown variations", () => {
 });
 
 describe("grip from arm lengths", () => {
-  it("recommends the grip whose forearms are vertical at the bottom (synthetic lifter: 2.0x)", () => {
+  it("by default puts the hands under the middle of the elbow's swing: Tony's 2.2x on the synthetic lifter", () => {
+    expect(recommendedGrip(PULLDOWN_SYNTH_ARMS).gripWidthXShoulder).toBeCloseTo(2.2, 1);
+  });
+
+  it("bottom-only rule: forearms vertical at the bottom (synthetic lifter: 2.0x)", () => {
     const g = recommendedGrip(PULLDOWN_SYNTH_ARMS, { bottomArmElevationDeg: 42, forearmTiltDeg: 0 });
     expect(g.gripWidthXShoulder).toBeCloseTo(2.0, 1);
     // The formula's bar height matches the synthetic rep at that grip and arm angle.
@@ -215,6 +220,6 @@ describe("grip from arm lengths", () => {
   it("widens the grip for a longer upper arm at the same shoulder width", () => {
     const base = recommendedGrip(PULLDOWN_SYNTH_ARMS).gripWidthM;
     const longArms = recommendedGrip({ ...PULLDOWN_SYNTH_ARMS, upperArmM: 0.34 }).gripWidthM;
-    expect(longArms - base).toBeCloseTo(2 * 0.04 * Math.sin((42 * Math.PI) / 180), 6);
+    expect(longArms - base).toBeCloseTo(0.04 * (Math.sin((42 * Math.PI) / 180) + 0.93), 6);
   });
 });

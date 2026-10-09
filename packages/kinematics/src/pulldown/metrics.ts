@@ -84,6 +84,8 @@ function landmarkTracks(seq: PoseSequence, window: number): Record<PoseLandmarkN
  * - `wrist_mid_fwd_m`: wrist midpoint distance ahead of the hip midpoint along the room's forward axis (bar path, with
  *   `wrist_mid_up_m`, its height above the hips). Room axes, not trunk, because the cable is fixed in the room.
  * - `*_forearm_pitch_deg`: forearm (elbow → wrist) angle from vertical seen from the side, + = wrist ahead of the elbow.
+ * - `*_forearm_front_tilt_deg`: forearm angle from vertical seen from the front (the line of pull there), + = wrist
+ *   outside the elbow.
  *   Compared with `cable_pitch_deg` it says whether the forearm is on the line of the force.
  * - `cable_pitch_deg`: estimated cable angle from vertical, side view, from the wrist midpoint to a pulley assumed to
  *   sit `pulleyAboveHipM` above the hips and `pulleyAheadOfKneeM` ahead of the knees (+ = pulley ahead of the hands).
@@ -172,6 +174,8 @@ export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): 
     for (const side of ["left", "right"] as const) {
       const forearm = sub(p(`${side}_wrist`), p(`${side}_elbow`));
       put(`${side}_forearm_pitch_deg`, i, Math.atan2(dot(forearm, forward), dot(forearm, UP)) * RAD_TO_DEG);
+      const outward = unit(rejectFrom(side === "left" ? sub(p("left_shoulder"), p("right_shoulder")) : sub(p("right_shoulder"), p("left_shoulder")), UP));
+      put(`${side}_forearm_front_tilt_deg`, i, Math.atan2(dot(forearm, outward), dot(forearm, UP)) * RAD_TO_DEG);
     }
     put("wrist_height_diff_m", i, dot(sub(p("left_wrist"), p("right_wrist")), UP));
   }

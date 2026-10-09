@@ -70,6 +70,14 @@
       "placeholder": true
     },
     {
+      "id": "forearms_on_line_front",
+      "feature": "forearm_front_tilt_max_deg",
+      "max": 15,
+      "fault": "forearm_off_line",
+      "why": "Seen from the front, forearms should stay parallel to the line of pull (vertical) over the bottom 80% of the pull; the top 20% is free for the elbows to straighten (Tony, 2026-10-09). The 2.2x baseline stays within about 10-11 deg; 15 leaves room for tracking noise.",
+      "placeholder": true
+    },
+    {
       "id": "trunk_lean_reasonable",
       "feature": "trunk_lean_mean_deg",
       "min": 0,
