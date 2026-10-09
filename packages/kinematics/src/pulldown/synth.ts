@@ -30,6 +30,11 @@ export interface PulldownProfile {
   lineAheadOfShouldersM: number;
   /** Pull line: the bar travels down a straight line tilted this far from vertical (top end forward). Tony: 12-15°. */
   pullLineDeg: number;
+  /**
+   * Aim the line of pull at the pulley (Tony, 2026-10-09): the bar runs along the cable, so moving the pulley tilts the
+   * line and pullLineDeg is ignored. The line still passes lineAheadOfShouldersM in front of the starting shoulders.
+   */
+  lineToPulley: boolean;
   /** Pulley (where the cable leaves the machine): height above the hips and distance ahead of the knees (m). The
    *  cable runs from the bar to here, so it is the direction the force pulls the hands. Tony: above the knees. */
   pulleyAboveHipM: number;
@@ -105,6 +110,7 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   trunkSwingDeg: 18,
   topElbowFlexionDeg: 11,
   pullLineDeg: 14.5,
+  lineToPulley: true,
   lineAheadOfShouldersM: 0.03,
   pulleyAboveHipM: 1.53,
   pulleyAheadOfKneeM: -0.22,
@@ -176,7 +182,6 @@ export const PULLDOWN_SETUPS = {
     bottomHumerusBehindDeg: -5,
     topElbowFlexionDeg: 18,
     lineAheadOfShouldersM: 0.27,
-    pullLineDeg: 16,
     trunkLeanDeg: 15,
     trunkSwingDeg: 9.5,
     pulleyAboveHipM: 1.8,
@@ -195,7 +200,6 @@ export const PULLDOWN_SETUPS = {
     elbowsForward: 0.8,
     forearmOnLine: true,
     lineAheadOfShouldersM: 0.16,
-    pullLineDeg: 16,
     pulleyAheadOfKneeM: 0,
   },
 } satisfies Record<string, PulldownProfile>;
@@ -313,13 +317,25 @@ function reachForFlexion(flexionDeg: number): number {
   return Math.sqrt(a * a + b * b + 2 * a * b * Math.cos(rad(flexionDeg)));
 }
 
-/** Unit vector pointing up the pull line (toward the pulley): tilted pullLineDeg forward of vertical. */
-const pullDir = (p: PulldownProfile) => v(0, Math.cos(rad(p.pullLineDeg)), Math.sin(rad(p.pullLineDeg)));
+/** The pulley in the body frame: pulleyAboveHipM over the hips, pulleyAheadOfKneeM ahead of the knees. */
+const pulleyOf = (p: PulldownProfile) => v(0, p.pulleyAboveHipM, BODY.thigh + p.pulleyAheadOfKneeM);
+/** Point on the pull line level with the starting shoulders. */
+function lineAnchor(p: PulldownProfile): Vec3 {
+  const start = shoulderMidOf(p, 0, p.trunkLeanDeg);
+  return v(0, start.y, start.z + p.lineAheadOfShouldersM);
+}
+/** Unit vector pointing up the pull line: at the pulley (lineToPulley), else tilted pullLineDeg forward of vertical. */
+const pullDir = (p: PulldownProfile) =>
+  p.lineToPulley ? unit(sub(pulleyOf(p), lineAnchor(p))) : v(0, Math.cos(rad(p.pullLineDeg)), Math.sin(rad(p.pullLineDeg)));
+/** The line of pull's tilt from vertical (degrees, + = top ahead), whichever way it's set. */
+export function pullLineDegOf(p: PulldownProfile): number {
+  const d = pullDir(p);
+  return (Math.atan2(d.z, d.y) * 180) / Math.PI;
+}
 
 /** Where the bar sits on the pull line: `t` meters up the line from the point level with the starting shoulders. */
 function barOnLine(p: PulldownProfile, t: number): Vec3 {
-  const start = shoulderMidOf(p, 0, p.trunkLeanDeg);
-  return add(v(0, start.y, start.z + p.lineAheadOfShouldersM), scale(pullDir(p), t));
+  return add(lineAnchor(p), scale(pullDir(p), t));
 }
 
 /** How far the forearm tilts off the cable line (seen from the side) at bar progress `prog`: 0 until the last part of
@@ -547,7 +563,7 @@ function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: nu
   // The bar runs down the pull line (fixed in the room, pullLineDeg off vertical) from top to bottom.
   const t = topT + (bottomT - topT) * prog;
   // Forearms line up with the force, i.e. the cable from the bar to the pulley above the knees.
-  const pulley = v(0, p.pulleyAboveHipM, BODY.thigh + p.pulleyAheadOfKneeM);
+  const pulley = pulleyOf(p);
   const dir = unit(sub(pulley, barOnLine(p, t)));
   const offLine = p.forearmOnLine ? forearmOffLineAt(prog, breakDeg, p.forearmBreakFraction) : 0;
 
