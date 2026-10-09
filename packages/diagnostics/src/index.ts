@@ -7,6 +7,11 @@ export const MODULE = "M6" as const;
 export { parseTier2Rules, rankRootCauses } from "./tier2/infer";
 export type { Tier2Rules } from "./tier2/infer";
 export { Tier2Cause, Tier2Pattern, Tier2Table } from "./tier2/schema";
+export { coachSet, formatTime, parseCoachingTable } from "./coaching/coach";
+export type { Cue, CueKind, SetCoaching } from "./coaching/coach";
+export { CoachingTable, SetFeedback } from "./coaching/schema";
+/** Hand-written pulldown findings, used as stand-in Tier 1 output until real clips are analysed. */
+export { pulldownFrontalFindings, pulldownSagittalFindings } from "./tier2/fixtures";
 
 /** Kinematics output as diagnostics sees it (structurally matches @optimass/kinematics' KinematicAnalysis). */
 export interface KinematicInput {

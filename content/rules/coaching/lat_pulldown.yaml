@@ -1,0 +1,110 @@
+# Between-set coaching for the lat pulldown: what the lifter is asked after each set, and which cues
+# they get back. Read by packages/diagnostics/src/coaching.
+#
+# DRAFT FOR TONY TO REVIEW. Every muscle location, threshold and cue below is a PLACEHOLDER written
+# to exercise the set-feedback screens. None of it is a confirmed coaching or clinical reference.
+
+version: "0.1.0-placeholder"
+exerciseId: lat_pulldown
+
+# Question 1 and 2: "Do you feel the muscle working here?" and "How much (1-10)?"
+# role: target   = we want them to feel it; a low rating earns `lowCues`.
+# role: watch    = feeling it a lot usually means another muscle is taking over; a high rating earns `highCues`.
+feel:
+  lowRating: 4        # PLACEHOLDER: a target muscle rated at or below this counts as "barely felt"
+  highRating: 7       # PLACEHOLDER: a watch muscle rated at or above this counts as "taking over"
+  muscles:
+    - id: lats
+      label: Lats
+      where: Sides of your back, just below the armpits
+      role: target
+      lowCues:
+        - Think of pulling your elbows down into your back pockets, not pulling the bar with your hands.
+        - Let the bar pull your arms fully up at the top so the lats start each rep stretched.
+    - id: mid_lower_traps
+      label: Between and below the shoulder blades
+      where: Middle of your upper back
+      role: target
+      lowCues:
+        - Start each rep by drawing the shoulder blades down before the elbows bend.
+    - id: biceps_forearms
+      label: Biceps and forearms
+      where: Front of the upper arm and the forearm
+      role: watch
+      highCues:
+        - Use a thumbless or looser grip and think of your hands as hooks.
+        - Pull with the elbows; keep the forearms in line with the cable.
+    - id: upper_traps_neck
+      label: Top of the shoulders and neck
+      where: Between the neck and the shoulder
+      role: watch
+      highCues:
+        - Keep the shoulders away from your ears for the whole rep.
+        - Try a slightly lighter weight so the shoulders can stay down.
+
+# Question 3: discomfort or pain, pinned to a moment in the video. The lifter picks the closest area.
+discomfort:
+  safetyNote: >-
+    PLACEHOLDER (Tony to confirm wording): sharp, pinching or worsening pain is a reason to stop the
+    exercise and get it checked by a clinician. These cues are for mild discomfort only.
+  areas:
+    - id: front_of_shoulder
+      label: Front of the shoulder
+      cues:
+        - Stop the pull when the elbows reach your sides instead of driving them behind you.
+        - Keep the chest up so the shoulders don't roll forward at the bottom.
+    - id: top_of_shoulder
+      label: Top of the shoulder or neck
+      cues:
+        - Keep the shoulders down and away from your ears.
+    - id: elbow
+      label: Elbow
+      cues:
+        - Loosen your grip and try a slightly wider or neutral grip.
+    - id: wrist
+      label: Wrist
+      cues:
+        - Keep the wrists straight, in line with the forearms.
+    - id: lower_back
+      label: Lower back
+      cues:
+        - Lock the thighs under the pad and keep the ribs down; don't lean back to finish the rep.
+    - id: other
+      label: Somewhere else
+      cues: []
+
+# Cues for Tier 1 form errors. Keys are Tier 1 error codes.
+formCues:
+  incomplete_top_rom:
+    - Let the arms go all the way up at the top before the next pull.
+  incomplete_bottom_rom:
+    - Pull until the bar reaches the top of your chest.
+  excessive_torso_lean:
+    - Stay tall; lean back only slightly and keep that angle for the whole set.
+  shoulder_elevation:
+    - Draw the shoulders down before you pull, and keep them down.
+  asymmetric_pull:
+    - Pull both elbows down at the same speed; the bar should stay level.
+  fast_eccentric:
+    - Take about two seconds to let the bar back up.
+  forward_head:
+    - Keep your head still and let the bar come to you.
+  excessive_shoulder_extension:
+    - Stop when the elbows reach your sides; don't drive them far behind you.
+  bar_path_off_line:
+    - Pull along a line that tilts slightly back toward your upper chest, not straight down.
+  forearm_off_line:
+    - Keep the forearms in line with the cable all the way down.
+  forearms_on_line_front:
+    - Seen from the front, keep the forearms vertical under the bar as you pull.
+  yanking:
+    - Start each pull smoothly; no jerking or swinging to get the bar moving.
+
+# Extra cues for the top-ranked likely causes (Tier 2 cause ids).
+causeCues:
+  load_exceeds_capacity:
+    - Drop the weight a little for the next set and see if the errors go away.
+  machine_setup:
+    - Check that the thigh pad is snug and the seat lets your arms reach straight up.
+  uncontrolled_lowering_habit:
+    - Count slowly on the way up for the next set.
