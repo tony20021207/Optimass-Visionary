@@ -21,7 +21,11 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
 - Tony's pulldown standard (2026-10-07): grip 2.0x shoulder width; bar travels a line ~12-15 deg off vertical
   (`pullLineDeg`); pulley above the knees; forearms on the cable line (bar → pulley, side view) until a slight
   break at the bottom; stop with the elbows just
-  past the trunk line. New fault codes not yet in the Tier 2 YAML: excessive_shoulder_extension, bar_path_off_line,
+  past the trunk line.
+- Baseline from Tony's Motion Lab settings (2026-10-09): grip 2.2x, line 14.5 deg, 11 deg elbow bend at the top
+  (bent out to the side), trunk swing 18 deg (trunk limits loosened to match), arms 42 deg from the trunk at the bottom,
+  pulley 1.53 m above the hips and 0.22 m behind the knees. Tier 1's pulley assumption (MetricOptions) uses the same
+  position. New fault codes not yet in the Tier 2 YAML: excessive_shoulder_extension, bar_path_off_line,
   forearm_off_line.
 - `pnpm --filter @optimass/kinematics pulldown:report` prints the feature table for every synthetic variant.
 

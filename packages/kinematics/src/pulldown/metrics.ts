@@ -32,9 +32,12 @@ export interface MetricOptions {
   smoothingWindow?: number;
   /**
    * Assumed pulley height above the hips (m), used to estimate the cable's direction (pulley taken to be straight above
-   * the knees). Equipment assumption, not measured: MediaPipe cannot see the machine. Default 1.6.
+   * the knees). Equipment assumption, not measured: MediaPipe cannot see the machine. Default 1.53 (Tony's baseline,
+   * 2026-10-09).
    */
   pulleyAboveHipM?: number;
+  /** Assumed pulley position ahead of the knees (m, − = behind them). Default −0.22 (Tony's baseline, 2026-10-09). */
+  pulleyAheadOfKneeM?: number;
 }
 
 /** World "up". MediaPipe world y points down; this assumes the camera is roughly level. */
@@ -83,7 +86,7 @@ function landmarkTracks(seq: PoseSequence, window: number): Record<PoseLandmarkN
  * - `*_forearm_pitch_deg`: forearm (elbow → wrist) angle from vertical seen from the side, + = wrist ahead of the elbow.
  *   Compared with `cable_pitch_deg` it says whether the forearm is on the line of the force.
  * - `cable_pitch_deg`: estimated cable angle from vertical, side view, from the wrist midpoint to a pulley assumed to
- *   sit `pulleyAboveHipM` above the hips and straight above the knees (+ = pulley ahead of the hands).
+ *   sit `pulleyAboveHipM` above the hips and `pulleyAheadOfKneeM` ahead of the knees (+ = pulley ahead of the hands).
  * - `wrist_mid_height_m`: wrist midpoint height above the shoulder midpoint (bar-height proxy).
  * - `grip_width_x_shoulder`: wrist-to-wrist distance ÷ shoulder-to-shoulder distance (hand spacing on the bar).
  * - `wrist_height_diff_m`: left wrist height minus right (bar tilt).
@@ -94,7 +97,8 @@ function landmarkTracks(seq: PoseSequence, window: number): Record<PoseLandmarkN
  */
 export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): KinematicSeries {
   const window = options.smoothingWindow ?? 5;
-  const pulleyAboveHip = options.pulleyAboveHipM ?? 1.6;
+  const pulleyAboveHip = options.pulleyAboveHipM ?? 1.53;
+  const pulleyAheadOfKnee = options.pulleyAheadOfKneeM ?? -0.22;
   const lm = landmarkTracks(seq, window);
   const timestampsMs = seq.frames.map((f) => f.timestampMs);
   const n = timestampsMs.length;
@@ -162,7 +166,7 @@ export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): 
     put("wrist_mid_height_m", i, dot(sub(wristMid, shoulderMid), UP));
     put("wrist_mid_up_m", i, dot(sub(wristMid, hipMid), UP));
     put("wrist_mid_fwd_m", i, dot(sub(wristMid, hipMid), forward));
-    const pulley = add(add(hipMid, scale(forward, dot(sub(kneeMid, hipMid), forward))), scale(UP, pulleyAboveHip));
+    const pulley = add(add(hipMid, scale(forward, dot(sub(kneeMid, hipMid), forward) + pulleyAheadOfKnee)), scale(UP, pulleyAboveHip));
     const cable = sub(pulley, wristMid);
     put("cable_pitch_deg", i, Math.atan2(dot(cable, forward), dot(cable, UP)) * RAD_TO_DEG);
     for (const side of ["left", "right"] as const) {

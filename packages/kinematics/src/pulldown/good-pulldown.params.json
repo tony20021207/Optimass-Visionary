@@ -81,17 +81,17 @@
     {
       "id": "trunk_stays_still",
       "feature": "trunk_lean_range_deg",
-      "max": 12,
+      "max": 24,
       "fault": "excessive_torso_lean",
-      "why": "Trunk angle should change little within a rep; large changes mean the torso is swinging the weight.",
+      "why": "Trunk angle should change little within a rep; large changes mean the torso is swinging the weight. Raised from 12 to 24 when Tony's baseline swing became 18 deg (2026-10-09); the momentum swing variant is ~29.",
       "placeholder": true
     },
     {
       "id": "no_torso_rocking",
       "feature": "trunk_lean_peak_vel_dps",
-      "max": 40,
+      "max": 65,
       "fault": "excessive_torso_lean",
-      "why": "Fast trunk extension during the pull is the signature of using momentum.",
+      "why": "Fast trunk extension during the pull is the signature of using momentum. Raised from 40 to 65 for the 18 deg baseline swing (good ~39 deg/s, momentum swing ~74).",
       "placeholder": true
     },
     {
