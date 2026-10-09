@@ -6,6 +6,9 @@ import { standardExerciseCamera, type CameraPlacement } from "../camera";
 import { renderSequence, type Body } from "../synth-render";
 import { add, cross, dist, dot, norm, rejectFrom, scale, sub, unit, v, type Vec3 } from "../vec3";
 
+export type PulldownGripType = "overhand" | "underhand" | "neutral";
+export type PulldownAttachment = "straight_bar" | "v_handle" | "neutral_bar";
+
 /** How one synthetic set moves. Times are seconds, distances meters, angles degrees. */
 export interface PulldownProfile {
   reps: number;
@@ -58,6 +61,10 @@ export interface PulldownProfile {
   gripWidthXShoulder: number;
   /** Where the elbows point as they bend: 0 = out to the sides, 1 = forward. Moves the pull from adduction to extension. */
   elbowsForward: number;
+  /** Hand orientation: overhand (palms forward), underhand (palms toward the face) or neutral (palms facing each other). */
+  gripType: PulldownGripType;
+  /** What the hands hold. Only changes the hand landmarks and how Motion Lab draws it; spacing is gripWidthXShoulder. */
+  attachment: PulldownAttachment;
   /** Head (ears) drifts this far forward of the shoulders, perpendicular to the trunk, as the bar comes down. */
   headForwardM: number;
   /** Right hand stays this much higher than the left at the bottom (an uneven pull). */
@@ -88,6 +95,8 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   shoulderElevationBottomM: -0.02,
   gripWidthXShoulder: 2.2,
   elbowsForward: 0.5,
+  gripType: "overhand",
+  attachment: "straight_bar",
   headForwardM: 0,
   rightHandLagM: 0,
   noiseM: 0.004,
@@ -115,6 +124,41 @@ export const PULLDOWN_VARIANTS = {
   asymmetric: { ...GOOD_PULLDOWN, rightHandLagM: 0.05, seed: 6 },
 } satisfies Record<string, PulldownProfile>;
 export type PulldownVariant = keyof typeof PULLDOWN_VARIANTS;
+
+/**
+ * Pulldown variations (grip and attachment). wide_overhand is Tony's baseline; the others are PLACEHOLDER starting
+ * points for Tony to tune in Motion Lab and paste back. Close grips pull with the elbows in front (more shoulder
+ * extension), so the forearm is not held on the cable line there.
+ */
+export const PULLDOWN_SETUPS = {
+  wide_overhand: GOOD_PULLDOWN,
+  narrow_underhand: { ...GOOD_PULLDOWN, gripType: "underhand", gripWidthXShoulder: 1.0, elbowsForward: 1, forearmOnLine: false, lineAheadOfShouldersM: 0.16 },
+  // Hands this close pass in front of the chest, so the line sits further forward and the pull stops with the elbows
+  // just in front of the trunk line (handle at the upper chest).
+  v_handle: {
+    ...GOOD_PULLDOWN,
+    gripType: "neutral",
+    attachment: "v_handle",
+    gripWidthXShoulder: 0.4,
+    elbowsForward: 1,
+    forearmOnLine: false,
+    lineAheadOfShouldersM: 0.16,
+    bottomHumerusBehindDeg: -5,
+  },
+  neutral_bar: { ...GOOD_PULLDOWN, gripType: "neutral", attachment: "neutral_bar", gripWidthXShoulder: 1.5, elbowsForward: 0.8, forearmOnLine: false, lineAheadOfShouldersM: 0.16 },
+} satisfies Record<string, PulldownProfile>;
+export type PulldownSetup = keyof typeof PULLDOWN_SETUPS;
+
+/**
+ * A fault variant performed on a variation: the variation's profile plus whatever the fault changes from the good rep.
+ * A fault that changes the grip itself (elbows_forward) keeps its own grip.
+ */
+export function pulldownProfileFor(setup: PulldownSetup, variant: PulldownVariant = "good"): PulldownProfile {
+  const fault: Partial<PulldownProfile> = {};
+  const good = GOOD_PULLDOWN as unknown as Record<string, unknown>;
+  for (const [k, val] of Object.entries(PULLDOWN_VARIANTS[variant])) if (val !== good[k]) (fault as Record<string, unknown>)[k] = val;
+  return { ...PULLDOWN_SETUPS[setup], ...fault };
+}
 
 /** Made-up anthropometrics for a ~1.75 m lifter, meters. */
 const BODY = {
@@ -391,7 +435,8 @@ function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: nu
     const onLine = p.forearmOnLine ? solveElbowOnLine(shoulder, wristTarget, dir, offLine, pole) : free;
     const { elbow, wrist } = blendElbow(shoulder, free, onLine, p.forearmOnLine ? topBendWeight(prog) : 1);
     const forearmDir = unit(sub(wrist, elbow));
-    const thumbSide = scale(L, -s); // overhand grip: thumbs point toward the midline
+    // Thumbs point toward the midline overhand, away from it underhand, and back toward the face on a neutral grip.
+    const thumbSide = p.gripType === "underhand" ? scale(L, s) : p.gripType === "neutral" ? scale(F, -1) : scale(L, -s);
     pose[`${side}_shoulder`] = shoulder;
     pose[`${side}_elbow`] = elbow;
     pose[`${side}_wrist`] = wrist;

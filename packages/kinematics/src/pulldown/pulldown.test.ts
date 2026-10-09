@@ -10,6 +10,9 @@ import {
   barTravelFor,
   parsePulldownParams,
   poseAt,
+  PULLDOWN_SETUPS,
+  pulldownProfileFor,
+  type PulldownSetup,
   pulldownSeries,
   segmentLength,
   synthesizePulldown,
@@ -170,5 +173,29 @@ describe("placeholder parameters vs synthetic reps", () => {
       parsePulldownParams({ exerciseId: "lat_pulldown", checks: [{ id: "x", feature: "eccentric_s", min: 3, max: 1 }] }),
     ).toThrow(/min > max/);
     expect(DEFAULT_PULLDOWN_PARAMS.checks.every((c) => c.placeholder)).toBe(true);
+  });
+});
+
+describe("pulldown variations", () => {
+  it.each(Object.keys(PULLDOWN_SETUPS) as PulldownSetup[])("%s: the good rep segments into 3 reps that reach the chest", (setup) => {
+    const report = analyzePulldown(synthesizePulldown(pulldownProfileFor(setup), { camera: at(135) }));
+    expect(report.reps).toHaveLength(3);
+    for (const r of report.reps) expect(Math.abs(r.features.bar_bottom_rel_shoulder_m!)).toBeLessThan(0.12);
+  });
+
+  it("close grips pull with more shoulder extension than the wide overhand grip", () => {
+    const share = (setup: PulldownSetup) => {
+      const reps = analyzePulldown(synthesizePulldown(pulldownProfileFor(setup), { camera: at(135) })).reps;
+      return reps.reduce((s, r) => s + r.features.extension_share!, 0) / reps.length;
+    };
+    expect(share("narrow_underhand")).toBeGreaterThan(share("wide_overhand") + 0.4);
+    expect(share("v_handle")).toBeGreaterThan(share("wide_overhand") + 0.4);
+  });
+
+  it("puts a fault on top of a variation and keeps the variation's grip", () => {
+    const p = pulldownProfileFor("narrow_underhand", "fast_eccentric");
+    expect(p.gripType).toBe("underhand");
+    expect(p.gripWidthXShoulder).toBe(1.0);
+    expect(p.eccentricS).toBe(PULLDOWN_VARIANTS.fast_eccentric.eccentricS);
   });
 });
