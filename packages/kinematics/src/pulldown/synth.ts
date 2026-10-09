@@ -3,6 +3,7 @@
 // reference: every body dimension and motion value below is a made-up default chosen to look like a plausible rep.
 import { POSE_LANDMARK_NAMES, type PoseLandmarkName, type PoseSequence } from "@optimass/types";
 import { standardExerciseCamera, type CameraPlacement } from "../camera";
+import { SYNTH_STATURE_M } from "../posture/synth";
 import { renderSequence, type Body } from "../synth-render";
 import { add, cross, dist, dot, norm, rejectFrom, scale, sub, unit, v, type Vec3 } from "../vec3";
 
@@ -563,16 +564,24 @@ function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: nu
   return pose;
 }
 
-/** Seated: hip midpoint height above the floor, and the lifter's waist (camera) height. */
+/** Seated: hip midpoint height above the floor. */
 export const PULLDOWN_HIP_HEIGHT_M = 0.5;
-export const PULLDOWN_WAIST_HEIGHT_M = 0.65;
+/** Protocol lens height for the pulldown: seated shoulder height (Tony, 2026-10-09). */
+export const PULLDOWN_CAMERA_HEIGHT_M = PULLDOWN_HIP_HEIGHT_M + BODY.trunk;
+/** The synthetic lifter's standing height, for the protocol camera distance. */
+export const PULLDOWN_STATURE_M = SYNTH_STATURE_M;
+
+/** The protocol camera for the synthetic pulldown, optionally moved to another azimuth. */
+export function pulldownCamera(azimuthDeg?: number): CameraPlacement {
+  return standardExerciseCamera(PULLDOWN_CAMERA_HEIGHT_M, PULLDOWN_STATURE_M, azimuthDeg);
+}
 
 /** Builds a PoseSequence (33 image + 33 world landmarks per frame) for a synthetic pulldown set. */
 export function synthesizePulldown(
   profile: PulldownProfile,
   options: { camera?: CameraPlacement; id?: string } = {},
 ): PoseSequence {
-  const camera = options.camera ?? standardExerciseCamera(PULLDOWN_WAIST_HEIGHT_M);
+  const camera = options.camera ?? pulldownCamera();
   return renderSequence({
     id: options.id ?? `synthetic-lat-pulldown-az${camera.azimuthDeg}`,
     exerciseId: "lat_pulldown",

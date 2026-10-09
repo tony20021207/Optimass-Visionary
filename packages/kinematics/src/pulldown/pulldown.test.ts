@@ -4,7 +4,7 @@ import { analyzeKinematics } from "../index";
 import {
   DEFAULT_PULLDOWN_PARAMS,
   GOOD_PULLDOWN,
-  PULLDOWN_WAIST_HEIGHT_M,
+  pulldownCamera,
   PULLDOWN_VARIANTS,
   analyzePulldown,
   barTravelFor,
@@ -23,7 +23,7 @@ import {
 
 /** Camera azimuths: 135 = the standard 45° behind-left view, 0 = front, 90 = left side, 225 = behind-right. */
 const AZIMUTHS = [135, 225, 0, 90] as const;
-const at = (azimuthDeg: number) => ({ azimuthDeg, heightM: PULLDOWN_WAIST_HEIGHT_M, distanceM: 3 });
+const at = (azimuthDeg: number) => pulldownCamera(azimuthDeg);
 const clip = (variant: PulldownVariant, azimuthDeg = 135) => synthesizePulldown(PULLDOWN_VARIANTS[variant], { camera: at(azimuthDeg) });
 
 describe("synthetic pulldown clips", () => {

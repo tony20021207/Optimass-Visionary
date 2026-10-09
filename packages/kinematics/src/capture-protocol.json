@@ -12,9 +12,16 @@
     "label": "Standard exercise view: 45° behind and to one side",
     "azimuthDeg": 135,
     "azimuthNote": "Measured around the lifter from straight in front (0), positive toward the lifter's left: 90 = left side, 180 = directly behind, 135 = behind-left. Behind-right (225) is equally valid; record which side was filmed.",
-    "cameraHeight": "waist",
-    "cameraHeightNote": "Lens at the lifter's waist height in the exercise position (standing or seated). Camera level, not tilted: the analysis takes image-down as gravity.",
-    "distanceNote": "Far enough that the whole body, including the hands at their highest point, stays in frame for the whole set (about 2.5-3.5 m with a phone in portrait).",
+    "cameraHeight": "movement_midpoint",
+    "cameraHeightNote": "Decided by Tony (2026-10-09): lens centred on the movement's vertical span (lowest to highest point of the moving body and hands), not on the body, so distortion is even top to bottom. Each exercise names its height below. Camera level, not tilted: the analysis takes image-down as gravity.",
+    "cameraHeightByExercise": {
+      "lat_pulldown": {
+        "height": "seated_shoulder",
+        "note": "Seated shoulder height: the midpoint between the seat and the hands overhead."
+      }
+    },
+    "distanceBodyHeights": 1.5,
+    "distanceNote": "Decided by Tony (2026-10-09): camera 1.5 x the user's height away (e.g. 2.6 m for a 1.75 m user), measured along the floor from the lens to the lifter. A 1x portrait lens frames about 1.37 x the distance vertically, so this keeps the whole body, including the hands at their highest point, in frame with room to spare.",
     "exceptions": []
   },
   "postureScreen": {

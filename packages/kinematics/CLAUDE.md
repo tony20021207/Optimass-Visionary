@@ -38,7 +38,9 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
 ## Capture protocol (decided by Tony, 2026-10-07)
 - Source of truth: `src/capture-protocol.json`, read through `src/camera.ts`.
 - Every exercise is filmed from 45° behind and to one side (azimuth 135° = behind-left, 225° = behind-right),
-  lens at the lifter's waist height in the exercise position, camera level. Whole body incl. hands in frame.
+  camera level, whole body incl. hands in frame. Distance and height (Tony, 2026-10-09): 1.5 x the user's height
+  away, lens centred on the movement's vertical span (`cameraHeightByExercise`; pulldown = seated shoulder height).
+  The root CLAUDE.md still says waist height; that file is updated on main.
 - Before analysis, a standing posture check is captured straight-on from the front, back, left and right, 1 body height
   away with the lens at hip height (`src/posture/`, `postureCamera`).
   Sagittal posture features use the side views, frontal features the front/back views.

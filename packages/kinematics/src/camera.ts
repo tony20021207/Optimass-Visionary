@@ -74,7 +74,10 @@ export function cameraViewFor(azimuthDeg: number): CameraView {
   return "sagittal";
 }
 
-/** Where the standard 45° exercise camera goes for a lifter whose hips are `hipHeightM` off the floor. */
-export function standardExerciseCamera(waistHeightM: number, distanceM = 3): CameraPlacement {
-  return { azimuthDeg: CAPTURE_PROTOCOL.exercise.azimuthDeg, heightM: waistHeightM, distanceM };
+/**
+ * Where the standard 45° exercise camera goes: lens at `lensHeightM` (the exercise's movement midpoint, see the
+ * protocol's cameraHeightByExercise), distanceBodyHeights x the user's stature away.
+ */
+export function standardExerciseCamera(lensHeightM: number, statureM: number, azimuthDeg = CAPTURE_PROTOCOL.exercise.azimuthDeg): CameraPlacement {
+  return { azimuthDeg, heightM: lensHeightM, distanceM: CAPTURE_PROTOCOL.exercise.distanceBodyHeights * statureM };
 }
