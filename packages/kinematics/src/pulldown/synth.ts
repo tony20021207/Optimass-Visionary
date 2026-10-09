@@ -69,6 +69,11 @@ export interface PulldownProfile {
   headForwardM: number;
   /** Right hand stays this much higher than the left at the bottom (an uneven pull). */
   rightHandLagM: number;
+  /**
+   * Yanking the bar down: 0 = smooth start from the top, 1 = the bar is snapped down from a standstill (most of the
+   * speed arrives in the first frames of the pull instead of building up).
+   */
+  yank: number;
   /** Std. dev. of per-landmark jitter added to world coordinates, mimicking estimation noise. */
   noiseM: number;
   seed: number;
@@ -99,6 +104,7 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   attachment: "straight_bar",
   headForwardM: 0,
   rightHandLagM: 0,
+  yank: 0,
   noiseM: 0.004,
   seed: 1,
 };
@@ -122,6 +128,8 @@ export const PULLDOWN_VARIANTS = {
   forward_head: { ...GOOD_PULLDOWN, headForwardM: 0.06, seed: 7 },
   /** Right arm finishes short of the left. */
   asymmetric: { ...GOOD_PULLDOWN, rightHandLagM: 0.05, seed: 6 },
+  /** Bar is yanked down from the top instead of the pull building speed smoothly. */
+  yank: { ...GOOD_PULLDOWN, yank: 1, seed: 10 },
 } satisfies Record<string, PulldownProfile>;
 export type PulldownVariant = keyof typeof PULLDOWN_VARIANTS;
 
@@ -186,7 +194,10 @@ export function barProgressAt(t: number, p: PulldownProfile): number {
   const tt = t - p.leadS;
   if (tt < 0 || tt >= repS * p.reps) return 0;
   let r = tt % repS;
-  if (r < p.concentricS) return ease(r / p.concentricS);
+  if (r < p.concentricS) {
+    const x = r / p.concentricS;
+    return (1 - p.yank) * ease(x) + p.yank * (1 - (1 - x) ** 3);
+  }
   r -= p.concentricS;
   if (r < p.bottomPauseS) return 1;
   r -= p.bottomPauseS;

@@ -35,6 +35,10 @@ export const PULLDOWN_FEATURES = {
   elbow_flexion_asymmetry_deg: "Left-right elbow flexion difference, averaged over the bottom of the rep",
   peak_wrist_speed_mps: "Fastest wrist speed during the pull",
   peak_elbow_flexion_vel_dps: "Fastest elbow flexion during the pull",
+  wrist_peak_acc_mps2: "Yank check: largest wrist acceleration (vector, change of speed or direction) from just before the pull starts to the bottom",
+  elbow_peak_acc_dps2: "Yank check: largest elbow flexion angular acceleration over the same window (both arms)",
+  shoulder_peak_acc_dps2: "Yank check: largest upper-arm (humerothoracic elevation) angular acceleration over the same window (both arms)",
+  trunk_peak_acc_dps2: "Yank check: largest trunk lean angular acceleration over the same window",
 } as const;
 export type PulldownFeature = keyof typeof PULLDOWN_FEATURES;
 export type PulldownFeatures = Record<PulldownFeature, number>;
@@ -74,6 +78,9 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
   const lowerFrames = Array.from({ length: bottomFrame - rep.startFrame + 1 }, (_, k) => rep.startFrame + k).filter(
     (i) => (topH - series.metrics.wrist_mid_height_m![i]!) >= 0.2 * (topH - bottomH),
   );
+  // Yank window: from a few frames before the pull starts (the snap off the top) to the bottom.
+  const yankFrom = Math.max(0, rep.startFrame - 5);
+  const peakAbs = (...names: string[]) => max(names.flatMap((nm) => m(nm, yankFrom, bottomFrame).map(Math.abs)));
   const performed = (name: string) =>
     mean((["left", "right"] as const).map((side) => {
       const cum = series.metrics[`${side}_${name}`]!;
@@ -119,5 +126,9 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
     elbow_flexion_asymmetry_deg: Math.abs(mean(m("elbow_flexion_diff_deg", frameAt(bottom.startMs), frameAt(bottom.endMs)))),
     peak_wrist_speed_mps: max([...m("left_wrist_speed_mps", cFrom, cTo), ...m("right_wrist_speed_mps", cFrom, cTo)]),
     peak_elbow_flexion_vel_dps: max([...m("left_elbow_flexion_vel_dps", cFrom, cTo), ...m("right_elbow_flexion_vel_dps", cFrom, cTo)]),
+    wrist_peak_acc_mps2: peakAbs("left_wrist_acc_mps2", "right_wrist_acc_mps2"),
+    elbow_peak_acc_dps2: peakAbs("left_elbow_flexion_acc_dps2", "right_elbow_flexion_acc_dps2"),
+    shoulder_peak_acc_dps2: peakAbs("left_humerothoracic_elevation_acc_dps2", "right_humerothoracic_elevation_acc_dps2"),
+    trunk_peak_acc_dps2: peakAbs("trunk_lean_acc_dps2"),
   };
 }

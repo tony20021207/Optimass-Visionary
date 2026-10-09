@@ -93,9 +93,10 @@ function landmarkTracks(seq: PoseSequence, window: number): Record<PoseLandmarkN
  * - `grip_width_x_shoulder`: wrist-to-wrist distance ÷ shoulder-to-shoulder distance (hand spacing on the bar).
  * - `wrist_height_diff_m`: left wrist height minus right (bar tilt).
  * - `elbow_flexion_diff_deg`: left minus right elbow flexion.
- * - `<angle>_vel_dps`: time derivative of each angle above.
+ * - `<angle>_vel_dps`, `<angle>_acc_dps2`: first and second time derivatives of each angle above.
  * - `<landmark>_speed_mps`: linear speed of wrists, elbows and shoulders relative to the hip midpoint
  *   (world landmarks are hip-centered, so whole-body sliding does not show up here).
+ * - `<landmark>_acc_mps2`: magnitude of the same landmarks' vector acceleration (change of speed or direction).
  */
 export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): KinematicSeries {
   const window = options.smoothingWindow ?? 5;
@@ -182,7 +183,9 @@ export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): 
   metrics.elbow_flexion_diff_deg = metrics.left_elbow_flexion_deg!.map((l, i) => l - metrics.right_elbow_flexion_deg![i]!);
 
   for (const name of PULLDOWN_ANGLE_METRICS) {
-    metrics[name.replace(/_deg$/, "_vel_dps")] = derivative(metrics[name]!, timestampsMs);
+    const vel = derivative(metrics[name]!, timestampsMs);
+    metrics[name.replace(/_deg$/, "_vel_dps")] = vel;
+    metrics[name.replace(/_deg$/, "_acc_dps2")] = derivative(vel, timestampsMs);
   }
   for (const name of PULLDOWN_SPEED_LANDMARKS) {
     const track = lm[name];
@@ -191,6 +194,17 @@ export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): 
       const lo = Math.max(0, i - 1);
       const hi = Math.min(n - 1, i + 1);
       return hi > lo ? norm(sub(track[hi]!, track[lo]!)) / dt(lo, hi) : 0;
+    });
+    // Vector velocity, then vector acceleration: a sudden change of speed OR direction shows up here.
+    const vel = track.map((_, i) => {
+      const lo = Math.max(0, i - 1);
+      const hi = Math.min(n - 1, i + 1);
+      return hi > lo ? scale(sub(track[hi]!, track[lo]!), 1 / dt(lo, hi)) : v(0, 0, 0);
+    });
+    metrics[`${name}_acc_mps2`] = vel.map((_, i) => {
+      const lo = Math.max(0, i - 1);
+      const hi = Math.min(n - 1, i + 1);
+      return hi > lo ? norm(sub(vel[hi]!, vel[lo]!)) / dt(lo, hi) : 0;
     });
   }
   return { timestampsMs, metrics };

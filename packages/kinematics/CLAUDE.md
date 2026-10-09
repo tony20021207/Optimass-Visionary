@@ -30,6 +30,9 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
 - Forearms on the line of pull in the FRONT view too, over the bottom 80% of the pull (Tony, 2026-10-09): check
   forearms_on_line_front. Grip formula in `grip.ts` (best fit: hands under the middle of the elbow's sideways swing;
   2.2x on the synthetic lifter); with a skeleton, analyzePulldown reports recommendedGrip and grip_vs_recommended.
+- Yank detection (Tony, 2026-10-09): per-frame angular (`*_acc_dps2`) and vector landmark (`*_acc_mps2`) acceleration;
+  check no_yank on wrist_peak_acc_mps2 (fault `yanking`, not in the Tier 2 YAML yet). Elbow/shoulder/trunk
+  accelerations are info only: too noisy to separate a yank on synthetic data.
 - `pnpm --filter @optimass/kinematics pulldown:report` prints the feature table for every synthetic variant.
 
 ## Capture protocol (decided by Tony, 2026-10-07)

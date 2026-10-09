@@ -131,6 +131,7 @@ describe("placeholder parameters vs synthetic reps", () => {
     ["elbows_forward", ["forearm_off_line"]],
     ["asymmetric", ["asymmetric_pull"]],
     ["forward_head", ["forward_head"]],
+    ["yank", ["yanking"]],
   ] as const)("%s trips only its own checks: %j", (variant, faults) => {
     expect([...failedFaults(variant)].sort()).toEqual([...faults].sort());
   });
