@@ -156,36 +156,48 @@ export type PulldownVariant = keyof typeof PULLDOWN_VARIANTS;
 /**
  * Pulldown variations (grip and attachment). wide_overhand is Tony's baseline; the others are PLACEHOLDER starting
  * points for Tony to tune in Motion Lab and paste back. Underhand keeps the forearms on the cable line (Tony, 2026-10-09)
- * and is fitted to a real clip (below). The neutral bar still pulls with free elbows. Tony dropped the
+ * (see below). Tony dropped the
  * V-handle (2026-10-09).
  */
 export const PULLDOWN_SETUPS = {
   wide_overhand: GOOD_PULLDOWN,
-  // Fitted (2026-10-09) to the 2 reps in the underhand clip Tony supplied (YouTube short, ~45° rear view, MediaPipe),
-  // with the forearm held on the cable: ~10° RMS error over elbow bend, arm elevation and humerus angle. One lifter, one
-  // clip: a starting point, not a standard. Tempo is rounded from the clip (its long demo hold at the bottom left out).
+  // Tony (2026-10-09): forearms stay on the cable the whole way, the bar stops short of the chest. That works for close
+  // grips when the line of pull tilts forward (16°) toward a pulley over or past the knees: forearms stay within ~13° of
+  // the cable from the side and the front, the bar stops near collarbone height, elbows at the trunk line. Grip, trunk
+  // and tempo come from Tony's underhand clip (one lifter, 2 reps, MediaPipe); its lifter broke the forearm off the
+  // cable early instead.
   narrow_underhand: {
     ...GOOD_PULLDOWN,
     gripType: "underhand",
     gripWidthXShoulder: 1.1,
     elbowsForward: 0.2,
     forearmOnLine: true,
-    forearmBreakFraction: 0.6,
-    bottomArmElevationDeg: 15,
+    bottomArmElevationDeg: 0,
     bottomHumerusBehindDeg: -5,
     topElbowFlexionDeg: 18,
     lineAheadOfShouldersM: 0.27,
-    pullLineDeg: -7,
+    pullLineDeg: 16,
     trunkLeanDeg: 15,
     trunkSwingDeg: 9.5,
     pulleyAboveHipM: 1.8,
-    pulleyAheadOfKneeM: -0.35,
+    pulleyAheadOfKneeM: 0.2,
     concentricS: 1.8,
     eccentricS: 3,
     bottomPauseS: 1,
     topPauseS: 0.5,
   },
-  neutral_bar: { ...GOOD_PULLDOWN, gripType: "neutral", attachment: "neutral_bar", bottomArmElevationDeg: 0, gripWidthXShoulder: 1.5, elbowsForward: 0.8, forearmOnLine: false, lineAheadOfShouldersM: 0.16 },
+  neutral_bar: {
+    ...GOOD_PULLDOWN,
+    gripType: "neutral",
+    attachment: "neutral_bar",
+    bottomArmElevationDeg: 0,
+    gripWidthXShoulder: 1.5,
+    elbowsForward: 0.8,
+    forearmOnLine: true,
+    lineAheadOfShouldersM: 0.16,
+    pullLineDeg: 16,
+    pulleyAheadOfKneeM: 0,
+  },
 } satisfies Record<string, PulldownProfile>;
 export type PulldownSetup = keyof typeof PULLDOWN_SETUPS;
 
@@ -328,12 +340,14 @@ const topBendWeight = (prog: number) => {
   return 1 - x * x * (3 - 2 * x);
 };
 
+/** How far the forearm may tilt from the cable, seen from the front, to stay exactly on it from the side (synth only). */
+const FRONT_TILT_FREE_DEG = 12;
+
 /**
  * Elbow for a shoulder and wrist with the forearm held on the cable line: seen from the side, the forearm points up
  * along `dir`, tilted `offLineDeg` forward of it (+ = elbow dropping behind the line). The elbow lies on a circle around
- * the shoulder–wrist axis; of the points meeting the condition, the one nearest `pole` is used. Where no point meets it
- * (close grips with the hands near the chest: the elbow can't reach that far below the hands), the forearm tilts off the
- * line as little as the arm allows.
+ * the shoulder–wrist axis; the point is picked to keep the forearm on the line from the side and upright from the front
+ * (see the cost below).
  */
 function solveElbowOnLine(shoulder: Vec3, wrist: Vec3, dir: Vec3, offLineDeg: number, pole: Vec3): { elbow: Vec3; wrist: Vec3 } {
   const a = BODY.upperArm;
@@ -355,34 +369,43 @@ function solveElbowOnLine(shoulder: Vec3, wrist: Vec3, dir: Vec3, offLineDeg: nu
     const e = Math.atan2(f.z, f.y) - target;
     return Math.atan2(Math.sin(e), Math.cos(e));
   };
-  // ψ = 0 is the pole direction. Scan the circle for exact solutions (sign changes, not the ±180° wrap) and keep the
-  // one nearest the pole; failing that, the smallest tilt.
-  const N = 120;
+  // Seen from the front the cable runs straight up from the bar, so the forearm should too.
+  const frontTilt = (psi: number) => {
+    const f = sub(w, elbowAt(psi));
+    return Math.abs(Math.atan2(f.x, f.y));
+  };
+  // Exact on the line from the side while the forearm stays within FRONT_TILT_FREE_DEG of upright from the front; past
+  // that (close grips: the hands are nearly in line with the shoulders, so the elbow can only stay on the line by swinging
+  // out level with the hands) the forearm trades side-view error against front tilt. One smooth cost, so the elbow
+  // never jumps between solutions mid-rep.
+  const free = rad(FRONT_TILT_FREE_DEG);
+  const cost = (psi: number) => {
+    const ft = frontTilt(psi);
+    return residual(psi) ** 2 + 4 * Math.max(0, ft - free) ** 2 + 1e-3 * ft * ft;
+  };
+  const N = 180;
   let bestPsi = 0;
-  let bestAbs = Infinity;
-  let bestRoot = NaN;
+  let bestCost = Infinity;
   for (let i = 0; i < N; i++) {
-    const p0 = -Math.PI + (2 * Math.PI * i) / N;
-    const p1 = p0 + (2 * Math.PI) / N;
-    const r0 = residual(p0);
-    const r1 = residual(p1);
-    if (Math.abs(r0) < bestAbs) {
-      bestAbs = Math.abs(r0);
-      bestPsi = p0;
-    }
-    if (r0 * r1 <= 0 && Math.abs(r0 - r1) < Math.PI) {
-      let lo = p0;
-      let hi = p1;
-      for (let k = 0; k < 30; k++) {
-        const m = (lo + hi) / 2;
-        if (residual(lo) * residual(m) <= 0) hi = m;
-        else lo = m;
-      }
-      const root = (lo + hi) / 2;
-      if (Number.isNaN(bestRoot) || Math.abs(root) < Math.abs(bestRoot)) bestRoot = root;
+    const psi = -Math.PI + (2 * Math.PI * i) / N;
+    const c = cost(psi);
+    if (c < bestCost) {
+      bestCost = c;
+      bestPsi = psi;
     }
   }
-  return { elbow: elbowAt(Number.isNaN(bestRoot) ? bestPsi : bestRoot), wrist: w };
+  let step = Math.PI / N;
+  for (let k = 0; k < 40; k++) {
+    for (const cand of [bestPsi - step, bestPsi + step]) {
+      const c = cost(cand);
+      if (c < bestCost) {
+        bestCost = c;
+        bestPsi = cand;
+      }
+    }
+    step /= 1.6;
+  }
+  return { elbow: elbowAt(bestPsi), wrist: w };
 }
 
 /**

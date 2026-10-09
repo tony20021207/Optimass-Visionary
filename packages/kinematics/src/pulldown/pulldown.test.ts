@@ -195,27 +195,32 @@ describe("pulldown variations", () => {
     expect(share("narrow_underhand")).toBeGreaterThan(share("wide_overhand") + 0.4);
   });
 
-  it("'arms down at bottom' flares the elbows on close-grip pulls too (Tony, 2026-10-09)", () => {
+  it("'arms down at bottom' flares the elbows on free-elbow close-grip pulls too (Tony, 2026-10-09)", () => {
     const elevation = (deg: number) => {
-      const reps = analyzePulldown(synthesizePulldown({ ...pulldownProfileFor("neutral_bar"), bottomArmElevationDeg: deg, noiseM: 0 })).reps;
+      const reps = analyzePulldown(synthesizePulldown({ ...pulldownProfileFor("neutral_bar"), forearmOnLine: false, bottomArmElevationDeg: deg, noiseM: 0 })).reps;
       return reps.reduce((s, r) => s + r.features.humerothoracic_elevation_bottom_deg!, 0) / reps.length;
     };
     expect(elevation(20) - elevation(0)).toBeGreaterThan(10);
   });
 
-  it("underhand keeps the forearm on the cable (side view) with the elbow below the hands (Tony, 2026-10-09)", () => {
-    const p = { ...pulldownProfileFor("narrow_underhand"), noiseM: 0 };
-    expect(p.forearmOnLine).toBe(true);
-    const side = (a: { y: number; z: number }) => (Math.atan2(a.z, a.y) * 180) / Math.PI;
-    for (const prog of [0.2, 0.3, 0.39].filter((x) => x < 1 - p.forearmBreakFraction)) {
-      const b = poseAt(prog, p);
-      const w = b.left_wrist;
-      const e = b.left_elbow;
+  it.each(["narrow_underhand", "neutral_bar"] as const)(
+    "%s keeps the forearm within 15° of the cable, side and front, over the bottom 80% (Tony, 2026-10-09)",
+    (setup) => {
+      const p = { ...pulldownProfileFor(setup), noiseM: 0 };
+      expect(p.forearmOnLine).toBe(true);
+      const deg = (r: number) => (r * 180) / Math.PI;
       const pulley = { y: p.pulleyAboveHipM, z: 0.43 + p.pulleyAheadOfKneeM };
-      expect(e.y).toBeLessThan(w.y);
-      expect(Math.abs(side({ y: w.y - e.y, z: w.z - e.z }) - side({ y: pulley.y - w.y, z: pulley.z - w.z }))).toBeLessThan(2);
-    }
-  });
+      for (let prog = 0.2; prog <= 1.0001; prog += 0.1) {
+        const b = poseAt(prog, p);
+        const w = b.left_wrist;
+        const e = b.left_elbow;
+        expect(e.y).toBeLessThan(w.y);
+        const side = deg(Math.atan2(w.z - e.z, w.y - e.y)) - deg(Math.atan2(pulley.z - w.z, pulley.y - w.y));
+        expect(Math.abs(side)).toBeLessThan(15);
+        expect(Math.abs(deg(Math.atan2(w.x - e.x, w.y - e.y)))).toBeLessThan(15);
+      }
+    },
+  );
 
   it("puts a fault on top of a variation and keeps the variation's grip", () => {
     const p = pulldownProfileFor("narrow_underhand", "fast_eccentric");
