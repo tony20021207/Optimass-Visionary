@@ -55,6 +55,17 @@ export interface PulldownProfile {
   shoulderElevationTopM: number;
   shoulderElevationBottomM: number;
   /**
+   * Scapular retraction at the top and the bottom (m): each shoulder joint glides back around the ribcage and slightly
+   * toward the spine (the shoulders narrow). MediaPipe sees it as shoulders moving back and closer together.
+   */
+  scapularRetractionTopM: number;
+  scapularRetractionBottomM: number;
+  /**
+   * Scapular downward rotation from the top to the bottom (deg). The shoulder joint swings down and slightly in around
+   * the scapula's rotation centre. MediaPipe has no scapula points, so this only shows as extra shoulder depression.
+   */
+  scapularDownwardRotationDeg: number;
+  /**
    * Hand spacing on the bar as a multiple of shoulder width (wrist to wrist ÷ shoulder to shoulder).
    * Default overhand grip 2.0× (Tony, 2026-10-07); close grip ≈ 1.1×. For a given bar depth a wider grip needs less elbow bend.
    */
@@ -98,6 +109,10 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   bottomHumerusBehindDeg: 5,
   shoulderElevationTopM: 0.03,
   shoulderElevationBottomM: -0.02,
+  // PLACEHOLDER girdle motion ("slight retraction", downward rotation) until Tony tunes it in Motion Lab.
+  scapularRetractionTopM: 0,
+  scapularRetractionBottomM: 0.015,
+  scapularDownwardRotationDeg: 20,
   gripWidthXShoulder: 2.2,
   elbowsForward: 0.5,
   gripType: "overhand",
@@ -117,7 +132,7 @@ export const PULLDOWN_VARIANTS = {
   /** Elbows never straighten at the top and the bar stops around the chin. */
   partial_rom: { ...GOOD_PULLDOWN, topElbowFlexionDeg: 40, bottomHumerusBehindDeg: -8, seed: 3 },
   /** Shoulders ride up toward the ears instead of depressing as the bar comes down. */
-  shrug: { ...GOOD_PULLDOWN, shoulderElevationTopM: 0.03, shoulderElevationBottomM: 0.05, seed: 4 },
+  shrug: { ...GOOD_PULLDOWN, shoulderElevationTopM: 0.03, shoulderElevationBottomM: 0.05, scapularDownwardRotationDeg: 0, seed: 4 },
   /** Pulls past the trunk line: the whole arm rotates back around the shoulder at the bottom (the old default). */
   over_pull: { ...GOOD_PULLDOWN, bottomHumerusBehindDeg: 28, seed: 9 },
   /** Bar is let go on the way up instead of being lowered under control. */
@@ -233,6 +248,28 @@ function shoulderMidAt(leanDeg: number): Vec3 {
   return v(0, BODY.trunk * Math.cos(rad(leanDeg)), -BODY.trunk * Math.sin(rad(leanDeg)));
 }
 
+/** Shoulder joint to the scapula's rotation centre, sideways (m). Made-up anatomy for the synthetic lifter. */
+const SCAPULA_ROTATION_RADIUS = 0.1;
+
+/**
+ * Shoulder joint (glenohumeral centre) for side `s` (1 = left, −1 = right) at bar progress `prog`: trunk position plus
+ * shoulder girdle elevation/depression, retraction and downward rotation.
+ */
+function shoulderAt(p: PulldownProfile, prog: number, leanDeg: number, s: 1 | -1): Vec3 {
+  const L = v(1, 0, 0);
+  const trunkAxis = unit(shoulderMidAt(leanDeg));
+  const trunkFwd = unit(cross(L, trunkAxis));
+  const lerp = (a: number, b: number) => a + (b - a) * prog;
+  const elevation = lerp(p.shoulderElevationTopM, p.shoulderElevationBottomM);
+  const retraction = lerp(p.scapularRetractionTopM, p.scapularRetractionBottomM);
+  const rot = rad(p.scapularDownwardRotationDeg * prog);
+  const out = BODY.shoulderHalfWidth - 0.4 * retraction - SCAPULA_ROTATION_RADIUS * (1 - Math.cos(rot));
+  const up = elevation - SCAPULA_ROTATION_RADIUS * Math.sin(rot);
+  return add(add(add(shoulderMidAt(leanDeg), scale(trunkAxis, up)), scale(trunkFwd, -retraction)), scale(L, s * out));
+}
+const shoulderMidOf = (p: PulldownProfile, prog: number, leanDeg: number) =>
+  scale(add(shoulderAt(p, prog, leanDeg, 1), shoulderAt(p, prog, leanDeg, -1)), 0.5);
+
 /** Upper arm angle behind the trunk's frontal plane (degrees, + = elbow behind), left arm, body frame. */
 function humerusBehindDeg(pose: Body, leanDeg: number): number {
   const fwd = v(0, Math.sin(rad(leanDeg)), Math.cos(rad(leanDeg))); // trunk forward, perpendicular to the lean
@@ -252,7 +289,7 @@ const pullDir = (p: PulldownProfile) => v(0, Math.cos(rad(p.pullLineDeg)), Math.
 
 /** Where the bar sits on the pull line: `t` meters up the line from the point level with the starting shoulders. */
 function barOnLine(p: PulldownProfile, t: number): Vec3 {
-  const start = add(shoulderMidAt(p.trunkLeanDeg), scale(unit(shoulderMidAt(p.trunkLeanDeg)), p.shoulderElevationTopM));
+  const start = shoulderMidOf(p, 0, p.trunkLeanDeg);
   return add(v(0, start.y, start.z + p.lineAheadOfShouldersM), scale(pullDir(p), t));
 }
 
@@ -376,8 +413,7 @@ export function barTravelFor(p: PulldownProfile): BarTravel {
   const cached = barCache.get(key);
   if (cached) return cached;
   if (barCache.size >= BAR_CACHE_MAX) barCache.clear();
-  const startShoulder = add(shoulderMidAt(p.trunkLeanDeg), scale(unit(shoulderMidAt(p.trunkLeanDeg)), p.shoulderElevationTopM));
-  const leftShoulder = add(startShoulder, v(BODY.shoulderHalfWidth, 0, 0));
+  const leftShoulder = shoulderAt(p, 0, p.trunkLeanDeg, 1);
   const grip = v(gripHalfWidth(p), 0, 0);
   const reach = reachForFlexion(p.topElbowFlexionDeg);
   let lo = 0;
@@ -426,8 +462,6 @@ function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: nu
   const F = v(0, 0, 1);
   const lean = p.trunkLeanDeg + p.trunkSwingDeg * prog;
   const trunkAxis = unit(shoulderMidAt(lean));
-  const elevation = p.shoulderElevationTopM + (p.shoulderElevationBottomM - p.shoulderElevationTopM) * prog;
-  const shoulderMid = add(shoulderMidAt(lean), scale(trunkAxis, elevation));
   const neckBase = shoulderMidAt(lean); // head does not move with the shoulder girdle
 
   // The bar runs down the pull line (fixed in the room, pullLineDeg off vertical) from top to bottom.
@@ -439,7 +473,7 @@ function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: nu
 
   const pose = {} as Body;
   for (const [side, s] of [["left", 1], ["right", -1]] as const) {
-    const shoulder = add(shoulderMid, scale(L, s * BODY.shoulderHalfWidth));
+    const shoulder = shoulderAt(p, prog, lean, s);
     const lag = side === "right" ? p.rightHandLagM * prog : 0;
     const wristTarget = add(barOnLine(p, t + lag), v(s * gripHalfWidth(p), 0, 0));
     // Elbows bend toward the pole: out, down and slightly back by default; forward as elbowsForward → 1.

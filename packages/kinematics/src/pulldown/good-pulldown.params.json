@@ -113,9 +113,9 @@
     {
       "id": "head_stays_in_line",
       "feature": "head_forward_change_m",
-      "max": 0.03,
+      "max": 0.05,
       "fault": "forward_head",
-      "why": "The head should stay in line with the trunk instead of poking forward to meet the bar.",
+      "why": "The head should stay in line with the trunk instead of poking forward to meet the bar. Measured from the shoulder joints, so shoulder blade retraction also reads as head-forward (~0.015-0.03 m on the good rep); raised from 0.03 to 0.05 for that (2026-10-09).",
       "placeholder": true
     },
     {
@@ -158,6 +158,7 @@
     { "id": "forearm_break_at_bottom", "feature": "forearm_off_line_bottom_deg", "why": "Reported only. How far the forearms leave the line of pull at the bottom; a slight break is expected (+ = elbows dropped behind the line).", "placeholder": true },
     { "id": "grip_width", "feature": "grip_width_x_shoulder", "why": "Reported only. Default overhand grip is 2.0x shoulder width (Tony, 2026-10-07). MediaPipe shoulder points sit inside the acromions, so this reads slightly wide. Add a min/max to enforce a grip.", "placeholder": true },
     { "id": "grip_matches_build", "feature": "grip_vs_recommended", "why": "Reported only. Grip width ÷ the grip recommended from the lifter's upper arm and forearm lengths (grip.ts). 1 = on target; needs the posture-check skeleton. Add a min/max (e.g. 0.95-1.05) to enforce it.", "placeholder": true },
+    { "id": "shoulder_blades_retract", "feature": "shoulder_narrowing_ratio", "why": "Reported only. Shoulder width lost from top to bottom (fraction), a proxy for scapular retraction; ~0.05-0.07 on the synthetic good rep. Downward rotation has no landmark of its own and shows up as depression. Add a min to require retraction.", "placeholder": true },
     { "id": "elbow_yank", "feature": "elbow_peak_acc_dps2", "why": "Reported only. Elbow angular acceleration; noisier than the wrist (second derivative of an angle). Synthetic: good ~1.5-2k, yanked ~3.7-4.4k deg/s2.", "placeholder": true },
     { "id": "shoulder_yank", "feature": "shoulder_peak_acc_dps2", "why": "Reported only. Upper-arm angular acceleration. Does not separate a yank from a close-grip pull on synthetic data.", "placeholder": true },
     { "id": "trunk_yank", "feature": "trunk_peak_acc_dps2", "why": "Reported only. Trunk lean angular acceleration; too noisy on synthetic data to judge yet.", "placeholder": true },

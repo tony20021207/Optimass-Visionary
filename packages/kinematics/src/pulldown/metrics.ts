@@ -89,6 +89,7 @@ function landmarkTracks(seq: PoseSequence, window: number): Record<PoseLandmarkN
  *   Compared with `cable_pitch_deg` it says whether the forearm is on the line of the force.
  * - `cable_pitch_deg`: estimated cable angle from vertical, side view, from the wrist midpoint to a pulley assumed to
  *   sit `pulleyAboveHipM` above the hips and `pulleyAheadOfKneeM` ahead of the knees (+ = pulley ahead of the hands).
+ * - `shoulder_width_m`: shoulder joint to shoulder joint; narrows as the shoulder blades retract.
  * - `wrist_mid_height_m`: wrist midpoint height above the shoulder midpoint (bar-height proxy).
  * - `grip_width_x_shoulder`: wrist-to-wrist distance ÷ shoulder-to-shoulder distance (hand spacing on the bar).
  * - `wrist_height_diff_m`: left wrist height minus right (bar tilt).
@@ -120,6 +121,7 @@ export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): 
     const trunkDown = sub(hipMid, shoulderMid);
     const forward = unit(rejectFrom(sub(kneeMid, hipMid), UP));
     const shoulderWidth = dist(p("left_shoulder"), p("right_shoulder"));
+    put("shoulder_width_m", i, shoulderWidth);
 
     // Trunk frame. Humerus direction is stored as (down, forward, outward) components so that leaning back is not
     // counted as shoulder movement.
