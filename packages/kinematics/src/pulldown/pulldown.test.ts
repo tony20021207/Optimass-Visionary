@@ -207,7 +207,7 @@ describe("pulldown variations", () => {
     const p = { ...pulldownProfileFor("narrow_underhand"), noiseM: 0 };
     expect(p.forearmOnLine).toBe(true);
     const side = (a: { y: number; z: number }) => (Math.atan2(a.z, a.y) * 180) / Math.PI;
-    for (const prog of [0.2, 0.4, 0.6, 0.75]) {
+    for (const prog of [0.2, 0.3, 0.39].filter((x) => x < 1 - p.forearmBreakFraction)) {
       const b = poseAt(prog, p);
       const w = b.left_wrist;
       const e = b.left_elbow;
@@ -220,7 +220,7 @@ describe("pulldown variations", () => {
   it("puts a fault on top of a variation and keeps the variation's grip", () => {
     const p = pulldownProfileFor("narrow_underhand", "fast_eccentric");
     expect(p.gripType).toBe("underhand");
-    expect(p.gripWidthXShoulder).toBe(1.0);
+    expect(p.gripWidthXShoulder).toBe(1.1);
     expect(p.eccentricS).toBe(PULLDOWN_VARIANTS.fast_eccentric.eccentricS);
   });
 });

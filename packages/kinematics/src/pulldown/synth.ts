@@ -47,6 +47,8 @@ export interface PulldownProfile {
    * forearm can only stay on the line by flaring the elbow out, so there the elbow just bends toward its pole.
    */
   forearmOnLine: boolean;
+  /** Share of the bar's travel, at the bottom, over which the forearm leaves the pull line (0.25 = the last quarter). */
+  forearmBreakFraction: number;
   /**
    * Where the pull stops: upper arm angle behind the trunk's frontal plane at the bottom (0 = elbow level with the
    * trunk line, + = elbow behind the body, the whole arm rotating back around the shoulder; − = elbow still in front).
@@ -108,6 +110,7 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   pulleyAheadOfKneeM: -0.22,
   bottomArmElevationDeg: 42,
   forearmOnLine: true,
+  forearmBreakFraction: 0.25,
   bottomHumerusBehindDeg: 5,
   shoulderElevationTopM: 0.03,
   shoulderElevationBottomM: -0.02,
@@ -152,14 +155,36 @@ export type PulldownVariant = keyof typeof PULLDOWN_VARIANTS;
 
 /**
  * Pulldown variations (grip and attachment). wide_overhand is Tony's baseline; the others are PLACEHOLDER starting
- * points for Tony to tune in Motion Lab and paste back. Underhand keeps the forearms on the cable line (Tony, 2026-10-09);
- * with the hands this close the elbows swing out mid-pull to stay on it, and the forearm breaks off the line only where
- * the arm can't reach it (last ~20% of the pull). The neutral bar still pulls with free elbows. Tony dropped the
+ * points for Tony to tune in Motion Lab and paste back. Underhand keeps the forearms on the cable line (Tony, 2026-10-09)
+ * and is fitted to a real clip (below). The neutral bar still pulls with free elbows. Tony dropped the
  * V-handle (2026-10-09).
  */
 export const PULLDOWN_SETUPS = {
   wide_overhand: GOOD_PULLDOWN,
-  narrow_underhand: { ...GOOD_PULLDOWN, gripType: "underhand", bottomArmElevationDeg: 0, gripWidthXShoulder: 1.0, elbowsForward: 1, forearmOnLine: true, lineAheadOfShouldersM: 0.16 },
+  // Fitted (2026-10-09) to the 2 reps in the underhand clip Tony supplied (YouTube short, ~45° rear view, MediaPipe),
+  // with the forearm held on the cable: ~10° RMS error over elbow bend, arm elevation and humerus angle. One lifter, one
+  // clip: a starting point, not a standard. Tempo is rounded from the clip (its long demo hold at the bottom left out).
+  narrow_underhand: {
+    ...GOOD_PULLDOWN,
+    gripType: "underhand",
+    gripWidthXShoulder: 1.1,
+    elbowsForward: 0.2,
+    forearmOnLine: true,
+    forearmBreakFraction: 0.6,
+    bottomArmElevationDeg: 15,
+    bottomHumerusBehindDeg: -5,
+    topElbowFlexionDeg: 18,
+    lineAheadOfShouldersM: 0.27,
+    pullLineDeg: -7,
+    trunkLeanDeg: 15,
+    trunkSwingDeg: 9.5,
+    pulleyAboveHipM: 1.8,
+    pulleyAheadOfKneeM: -0.35,
+    concentricS: 1.8,
+    eccentricS: 3,
+    bottomPauseS: 1,
+    topPauseS: 0.5,
+  },
   neutral_bar: { ...GOOD_PULLDOWN, gripType: "neutral", attachment: "neutral_bar", bottomArmElevationDeg: 0, gripWidthXShoulder: 1.5, elbowsForward: 0.8, forearmOnLine: false, lineAheadOfShouldersM: 0.16 },
 } satisfies Record<string, PulldownProfile>;
 export type PulldownSetup = keyof typeof PULLDOWN_SETUPS;
@@ -287,12 +312,11 @@ function barOnLine(p: PulldownProfile, t: number): Vec3 {
 
 /** How far the forearm tilts off the cable line (seen from the side) at bar progress `prog`: 0 until the last part of
  *  the pull, then easing into `breakDeg`. */
-function forearmOffLineAt(prog: number, breakDeg: number): number {
-  const x = Math.min(1, Math.max(0, (prog - (1 - FOREARM_BREAK_FRACTION)) / FOREARM_BREAK_FRACTION));
+function forearmOffLineAt(prog: number, breakDeg: number, fraction: number): number {
+  const f = Math.min(1, Math.max(0.05, fraction));
+  const x = Math.min(1, Math.max(0, (prog - (1 - f)) / f));
   return breakDeg * x * x * (3 - 2 * x);
 }
-/** Share of the bar's travel, at the bottom, over which the forearm leaves the pull line. */
-const FOREARM_BREAK_FRACTION = 0.25;
 /**
  * Share of the bar's travel, at the top, over which the elbow moves from its natural bend (out to the side, toward the
  * pole) onto the forearm-on-line solution. With only ~5° of bend the on-line constraint would push the elbow straight
@@ -502,7 +526,7 @@ function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: nu
   // Forearms line up with the force, i.e. the cable from the bar to the pulley above the knees.
   const pulley = v(0, p.pulleyAboveHipM, BODY.thigh + p.pulleyAheadOfKneeM);
   const dir = unit(sub(pulley, barOnLine(p, t)));
-  const offLine = p.forearmOnLine ? forearmOffLineAt(prog, breakDeg) : 0;
+  const offLine = p.forearmOnLine ? forearmOffLineAt(prog, breakDeg, p.forearmBreakFraction) : 0;
 
   const pose = {} as Body;
   for (const [side, s] of [["left", 1], ["right", -1]] as const) {
@@ -511,7 +535,7 @@ function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: nu
     const wristTarget = add(barOnLine(p, t + lag), v(s * gripHalfWidth(p), 0, 0));
     // Elbows bend toward the pole: out, down and slightly back by default; forward as elbowsForward → 1.
     // Free elbows: flare out toward the sides over the last part of the pull (see barTravelFor).
-    const k = p.forearmOnLine ? p.elbowsForward : p.elbowsForward * (1 - forearmOffLineAt(prog, breakDeg));
+    const k = p.forearmOnLine ? p.elbowsForward : p.elbowsForward * (1 - forearmOffLineAt(prog, breakDeg, p.forearmBreakFraction));
     const pole = add(add(scale(L, s * (1 - k)), scale(U, -1)), scale(F, -0.3 + 1.3 * k));
     const free = solveElbow(shoulder, wristTarget, pole);
     const onLine = p.forearmOnLine ? solveElbowOnLine(shoulder, wristTarget, dir, offLine, pole) : free;
