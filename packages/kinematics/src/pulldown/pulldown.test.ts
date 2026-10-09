@@ -196,6 +196,14 @@ describe("pulldown variations", () => {
     expect(share("v_handle")).toBeGreaterThan(share("wide_overhand") + 0.4);
   });
 
+  it("'arms down at bottom' flares the elbows on close-grip pulls too (Tony, 2026-10-09)", () => {
+    const elevation = (deg: number) => {
+      const reps = analyzePulldown(synthesizePulldown({ ...pulldownProfileFor("neutral_bar"), bottomArmElevationDeg: deg, noiseM: 0 })).reps;
+      return reps.reduce((s, r) => s + r.features.humerothoracic_elevation_bottom_deg!, 0) / reps.length;
+    };
+    expect(elevation(20) - elevation(0)).toBeGreaterThan(10);
+  });
+
   it("puts a fault on top of a variation and keeps the variation's grip", () => {
     const p = pulldownProfileFor("narrow_underhand", "fast_eccentric");
     expect(p.gripType).toBe("underhand");

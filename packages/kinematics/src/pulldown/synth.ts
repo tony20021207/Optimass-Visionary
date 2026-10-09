@@ -38,6 +38,7 @@ export interface PulldownProfile {
    * Lower = more adduction. Seen from the side the forearm stays on the cable line until the last quarter of the pull,
    * then breaks off it (elbows dropping behind) by whatever angle lands the arms here at the trunk-line stop point.
    * Less break = arms finish lower; a break of 0 is the lowest the forearm-on-line pull can reach.
+   * With free elbows (forearmOnLine false) the elbows flare out over the last quarter instead; 0 = no flare.
    */
   bottomArmElevationDeg: number;
   /**
@@ -155,7 +156,7 @@ export type PulldownVariant = keyof typeof PULLDOWN_VARIANTS;
  */
 export const PULLDOWN_SETUPS = {
   wide_overhand: GOOD_PULLDOWN,
-  narrow_underhand: { ...GOOD_PULLDOWN, gripType: "underhand", gripWidthXShoulder: 1.0, elbowsForward: 1, forearmOnLine: false, lineAheadOfShouldersM: 0.16 },
+  narrow_underhand: { ...GOOD_PULLDOWN, gripType: "underhand", bottomArmElevationDeg: 0, gripWidthXShoulder: 1.0, elbowsForward: 1, forearmOnLine: false, lineAheadOfShouldersM: 0.16 },
   // Hands this close pass in front of the chest, so the line sits further forward and the pull stops with the elbows
   // just in front of the trunk line (handle at the upper chest).
   v_handle: {
@@ -167,8 +168,9 @@ export const PULLDOWN_SETUPS = {
     forearmOnLine: false,
     lineAheadOfShouldersM: 0.16,
     bottomHumerusBehindDeg: -5,
+    bottomArmElevationDeg: 0,
   },
-  neutral_bar: { ...GOOD_PULLDOWN, gripType: "neutral", attachment: "neutral_bar", gripWidthXShoulder: 1.5, elbowsForward: 0.8, forearmOnLine: false, lineAheadOfShouldersM: 0.16 },
+  neutral_bar: { ...GOOD_PULLDOWN, gripType: "neutral", attachment: "neutral_bar", bottomArmElevationDeg: 0, gripWidthXShoulder: 1.5, elbowsForward: 0.8, forearmOnLine: false, lineAheadOfShouldersM: 0.16 },
 } satisfies Record<string, PulldownProfile>;
 export type PulldownSetup = keyof typeof PULLDOWN_SETUPS;
 
@@ -427,7 +429,22 @@ export function barTravelFor(p: PulldownProfile): BarTravel {
   const endLean = p.trunkLeanDeg + p.trunkSwingDeg;
   const bottomFor = (breakDeg: number) => stopOnLine(p, top, breakDeg, endLean);
   if (!p.forearmOnLine) {
-    const travel = { top, bottom: bottomFor(0), breakDeg: 0 };
+    // Free elbows (close grips): "breakDeg" carries the elbow flare at the bottom instead (0 = elbows where
+    // elbowsForward puts them, 1 = swung fully out to the sides), solved so the arms finish at bottomArmElevationDeg.
+    // Below the natural finish (flare 0) the slider can't go lower, so flare stays 0.
+    const flareElevation = (f: number) => armElevationDeg(poseWithBar(1, p, top, bottomFor(f), f), endLean);
+    let flare = 0;
+    if (flareElevation(0) < p.bottomArmElevationDeg) {
+      let flo = 0;
+      let fhi = 1;
+      for (let i = 0; i < 25; i++) {
+        const m = (flo + fhi) / 2;
+        if (flareElevation(m) < p.bottomArmElevationDeg) flo = m;
+        else fhi = m;
+      }
+      flare = (flo + fhi) / 2;
+    }
+    const travel = { top, bottom: bottomFor(flare), breakDeg: flare };
     barCache.set(key, travel);
     return travel;
   }
@@ -469,7 +486,7 @@ function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: nu
   // Forearms line up with the force, i.e. the cable from the bar to the pulley above the knees.
   const pulley = v(0, p.pulleyAboveHipM, BODY.thigh + p.pulleyAheadOfKneeM);
   const dir = unit(sub(pulley, barOnLine(p, t)));
-  const offLine = forearmOffLineAt(prog, breakDeg);
+  const offLine = p.forearmOnLine ? forearmOffLineAt(prog, breakDeg) : 0;
 
   const pose = {} as Body;
   for (const [side, s] of [["left", 1], ["right", -1]] as const) {
@@ -477,7 +494,8 @@ function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: nu
     const lag = side === "right" ? p.rightHandLagM * prog : 0;
     const wristTarget = add(barOnLine(p, t + lag), v(s * gripHalfWidth(p), 0, 0));
     // Elbows bend toward the pole: out, down and slightly back by default; forward as elbowsForward → 1.
-    const k = p.elbowsForward;
+    // Free elbows: flare out toward the sides over the last part of the pull (see barTravelFor).
+    const k = p.forearmOnLine ? p.elbowsForward : p.elbowsForward * (1 - forearmOffLineAt(prog, breakDeg));
     const pole = add(add(scale(L, s * (1 - k)), scale(U, -1)), scale(F, -0.3 + 1.3 * k));
     const free = solveElbow(shoulder, wristTarget, pole);
     const onLine = p.forearmOnLine ? solveElbowOnLine(shoulder, wristTarget, dir, offLine, pole) : free;
