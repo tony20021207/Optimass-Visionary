@@ -171,6 +171,9 @@ const BODY = {
   shin: 0.43,
   barAheadOfShoulders: 0.12,
 };
+/** The synthetic lifter's arm dimensions, for the grip formula (grip.ts). */
+export const PULLDOWN_SYNTH_ARMS = { shoulderWidthM: 2 * BODY.shoulderHalfWidth, upperArmM: BODY.upperArm, forearmM: BODY.forearm };
+
 
 const FPS = 30;
 

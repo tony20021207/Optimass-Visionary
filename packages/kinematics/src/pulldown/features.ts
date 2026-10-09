@@ -16,6 +16,7 @@ export const PULLDOWN_FEATURES = {
   humerus_behind_trunk_bottom_deg: "Upper arm angle behind the trunk line at the bottom (+ = elbows behind the body, arm rotating back around the shoulder; mean of both arms)",
   elbow_forward_bottom_m: "Elbow ahead of the shoulder at the bottom (m, + = in front of the body)",
   grip_width_x_shoulder: "Hand spacing on the bar as a multiple of shoulder width (wrist to wrist ÷ shoulder to shoulder, rep average)",
+  grip_vs_recommended: "Grip width ÷ the grip recommended for this lifter's arm lengths (grip.ts; needs the posture-check skeleton, else NaN). 1 = on target",
   pull_line_deg: "Bar path angle from vertical, top of the rep to the bottom (+ = bar starts ahead and comes back toward the body)",
   forearm_off_line_deg: "Forearm vs the cable (line of force, pulley assumed above the knees), seen from the side, over the first three quarters of the pull (mean absolute angle, both arms)",
   forearm_off_line_bottom_deg: "Forearm vs the cable at the bottom (+ = elbows dropped behind the line; mean of both arms)",
@@ -89,6 +90,7 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
     ]),
     elbow_forward_bottom_m: mean([series.metrics.left_elbow_forward_m![bottomFrame]!, series.metrics.right_elbow_forward_m![bottomFrame]!]),
     grip_width_x_shoulder: mean(m("grip_width_x_shoulder")),
+    grip_vs_recommended: Number.NaN, // filled in by analyzePulldown when a skeleton is given
     pull_line_deg: pullLine,
     forearm_off_line_deg: mean(onLineFrames.flatMap((i) => [Math.abs(offLine("left", i)), Math.abs(offLine("right", i))])),
     forearm_off_line_bottom_deg: mean([offLine("left", bottomFrame), offLine("right", bottomFrame)]),

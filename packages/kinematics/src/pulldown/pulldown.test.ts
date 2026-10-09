@@ -11,6 +11,8 @@ import {
   parsePulldownParams,
   poseAt,
   PULLDOWN_SETUPS,
+  PULLDOWN_SYNTH_ARMS,
+  recommendedGrip,
   pulldownProfileFor,
   type PulldownSetup,
   pulldownSeries,
@@ -197,5 +199,22 @@ describe("pulldown variations", () => {
     expect(p.gripType).toBe("underhand");
     expect(p.gripWidthXShoulder).toBe(1.0);
     expect(p.eccentricS).toBe(PULLDOWN_VARIANTS.fast_eccentric.eccentricS);
+  });
+});
+
+describe("grip from arm lengths", () => {
+  it("recommends the grip whose forearms are vertical at the bottom (synthetic lifter: 2.0x)", () => {
+    const g = recommendedGrip(PULLDOWN_SYNTH_ARMS, { bottomArmElevationDeg: 42, forearmTiltDeg: 0 });
+    expect(g.gripWidthXShoulder).toBeCloseTo(2.0, 1);
+    // The formula's bar height matches the synthetic rep at that grip and arm angle.
+    const reps = analyzePulldown(synthesizePulldown({ ...GOOD_PULLDOWN, gripWidthXShoulder: g.gripWidthXShoulder, noiseM: 0 }), undefined, {}).reps;
+    const bar = reps.reduce((s, r) => s + r.features.bar_bottom_rel_shoulder_m!, 0) / reps.length;
+    expect(Math.abs(bar - g.barAboveShouldersM)).toBeLessThan(0.02);
+  });
+
+  it("widens the grip for a longer upper arm at the same shoulder width", () => {
+    const base = recommendedGrip(PULLDOWN_SYNTH_ARMS).gripWidthM;
+    const longArms = recommendedGrip({ ...PULLDOWN_SYNTH_ARMS, upperArmM: 0.34 }).gripWidthM;
+    expect(longArms - base).toBeCloseTo(2 * 0.04 * Math.sin((42 * Math.PI) / 180), 6);
   });
 });
