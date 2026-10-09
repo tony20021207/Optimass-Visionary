@@ -29,24 +29,24 @@ describe("coachSet (lat pulldown)", () => {
       findings: [],
       feedback: {
         muscles: {
-          lats: { felt: true, rating: 3 },
-          mid_lower_traps: { felt: true, rating: 8 },
-          biceps_forearms: { felt: true, rating: 9 },
-          upper_traps_neck: { felt: true, rating: 2 },
+          lats_teres_major: { felt: true, rating: 3 },
+          rhomboids: { felt: true, rating: 8 },
+          upper_traps_neck: { felt: true, rating: 9 },
+          posterior_deltoid: { felt: true, rating: 5 },
         },
       },
       coaching,
     });
     const feel = out.cues.filter((c) => c.kind === "feel");
-    const lats = coaching.feel.muscles.find((m) => m.id === "lats")!;
-    const biceps = coaching.feel.muscles.find((m) => m.id === "biceps_forearms")!;
-    expect(feel.map((c) => c.text).sort()).toEqual([...lats.lowCues, ...biceps.highCues].sort());
+    const lats = coaching.feel.muscles.find((m) => m.id === "lats_teres_major")!;
+    const traps = coaching.feel.muscles.find((m) => m.id === "upper_traps_neck")!;
+    expect(feel.map((c) => c.text).sort()).toEqual([...lats.lowCues, ...traps.highCues].sort());
     expect(feel[0]!.because[0]).toMatch(/\d\/10/);
   });
 
   it("treats a target muscle that wasn't felt at all as barely felt", () => {
-    const out = coachSet({ findings: [], feedback: { muscles: { lats: { felt: false } } }, coaching });
-    expect(out.cues.map((c) => c.because[0])).toContain("You didn't feel lats");
+    const out = coachSet({ findings: [], feedback: { muscles: { lats_teres_major: { felt: false } } }, coaching });
+    expect(out.cues.map((c) => c.because[0])).toContain("You didn't feel lats and teres major");
   });
 
   it("puts discomfort cues first, with the moment and the safety note", () => {

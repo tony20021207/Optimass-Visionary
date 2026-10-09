@@ -11,29 +11,37 @@ exerciseId: lat_pulldown
 # role: target   = we want them to feel it; a low rating earns `lowCues`.
 # role: watch    = feeling it a lot usually means another muscle is taking over; a high rating earns `highCues`.
 feel:
-  lowRating: 4        # PLACEHOLDER: a target muscle rated at or below this counts as "barely felt"
-  highRating: 7       # PLACEHOLDER: a watch muscle rated at or above this counts as "taking over"
+  lowRating: 4        # Confirmed by Tony 2026-10-09: a target muscle rated at or below this counts as "barely felt"
+  highRating: 7       # Confirmed by Tony 2026-10-09: a watch muscle rated at or above this counts as "taking over"
+  # Target muscles confirmed by Tony 2026-10-09. Locations and cues are still PLACEHOLDERS; cues will follow
+  # Tony's Tier 1 form-check decisions.
   muscles:
-    - id: lats
-      label: Lats
-      where: Sides of your back, just below the armpits
+    - id: lats_teres_major
+      label: Lats and teres major
+      where: Sides of your back, from the armpit down toward the waist
       role: target
       lowCues:
         - Think of pulling your elbows down into your back pockets, not pulling the bar with your hands.
         - Let the bar pull your arms fully up at the top so the lats start each rep stretched.
-    - id: mid_lower_traps
-      label: Between and below the shoulder blades
-      where: Middle of your upper back
-      role: target
-      lowCues:
-        - Start each rep by drawing the shoulder blades down before the elbows bend.
     - id: biceps_forearms
       label: Biceps and forearms
       where: Front of the upper arm and the forearm
-      role: watch
-      highCues:
-        - Use a thumbless or looser grip and think of your hands as hooks.
-        - Pull with the elbows; keep the forearms in line with the cable.
+      role: target
+      lowCues:
+        - Let the elbows bend fully as the bar comes down to your chest.
+    - id: rhomboids
+      label: Rhomboids
+      where: Between your shoulder blades and your spine
+      role: target
+      lowCues:
+        - At the bottom, draw the shoulder blades slightly together as well as down.
+    - id: posterior_deltoid
+      label: Rear shoulders
+      where: Back of the shoulder, behind the armpit
+      role: target
+      lowCues:
+        - Drive the elbows down and slightly back toward your sides.
+    # Not on Tony's list; kept as a check for shrugging. Remove if not wanted.
     - id: upper_traps_neck
       label: Top of the shoulders and neck
       where: Between the neck and the shoulder
