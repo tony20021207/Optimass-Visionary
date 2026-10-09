@@ -8,7 +8,7 @@ import { renderSequence, type Body } from "../synth-render";
 import { add, cross, dist, dot, norm, rejectFrom, scale, sub, unit, v, type Vec3 } from "../vec3";
 
 export type PulldownGripType = "overhand" | "underhand" | "neutral";
-export type PulldownAttachment = "straight_bar" | "v_handle" | "neutral_bar";
+export type PulldownAttachment = "straight_bar" | "neutral_bar";
 
 /** How one synthetic set moves. Times are seconds, distances meters, angles degrees. */
 export interface PulldownProfile {
@@ -154,24 +154,12 @@ export type PulldownVariant = keyof typeof PULLDOWN_VARIANTS;
  * Pulldown variations (grip and attachment). wide_overhand is Tony's baseline; the others are PLACEHOLDER starting
  * points for Tony to tune in Motion Lab and paste back. Underhand keeps the forearms on the cable line (Tony, 2026-10-09);
  * with the hands this close the elbows swing out mid-pull to stay on it, and the forearm breaks off the line only where
- * the arm can't reach it (last ~20% of the pull). The V-handle and neutral bar still pull with free elbows.
+ * the arm can't reach it (last ~20% of the pull). The neutral bar still pulls with free elbows. Tony dropped the
+ * V-handle (2026-10-09).
  */
 export const PULLDOWN_SETUPS = {
   wide_overhand: GOOD_PULLDOWN,
   narrow_underhand: { ...GOOD_PULLDOWN, gripType: "underhand", bottomArmElevationDeg: 0, gripWidthXShoulder: 1.0, elbowsForward: 1, forearmOnLine: true, lineAheadOfShouldersM: 0.16 },
-  // Hands this close pass in front of the chest, so the line sits further forward and the pull stops with the elbows
-  // just in front of the trunk line (handle at the upper chest).
-  v_handle: {
-    ...GOOD_PULLDOWN,
-    gripType: "neutral",
-    attachment: "v_handle",
-    gripWidthXShoulder: 0.4,
-    elbowsForward: 1,
-    forearmOnLine: false,
-    lineAheadOfShouldersM: 0.16,
-    bottomHumerusBehindDeg: -5,
-    bottomArmElevationDeg: 0,
-  },
   neutral_bar: { ...GOOD_PULLDOWN, gripType: "neutral", attachment: "neutral_bar", bottomArmElevationDeg: 0, gripWidthXShoulder: 1.5, elbowsForward: 0.8, forearmOnLine: false, lineAheadOfShouldersM: 0.16 },
 } satisfies Record<string, PulldownProfile>;
 export type PulldownSetup = keyof typeof PULLDOWN_SETUPS;

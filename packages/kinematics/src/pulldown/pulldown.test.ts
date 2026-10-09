@@ -193,7 +193,6 @@ describe("pulldown variations", () => {
       return reps.reduce((s, r) => s + r.features.extension_share!, 0) / reps.length;
     };
     expect(share("narrow_underhand")).toBeGreaterThan(share("wide_overhand") + 0.4);
-    expect(share("v_handle")).toBeGreaterThan(share("wide_overhand") + 0.4);
   });
 
   it("'arms down at bottom' flares the elbows on close-grip pulls too (Tony, 2026-10-09)", () => {
