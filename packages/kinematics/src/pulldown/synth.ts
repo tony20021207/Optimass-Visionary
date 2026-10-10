@@ -13,7 +13,7 @@ import type { PostureFeature, PostureFeatureResult } from "../posture/metrics";
 import { add, cross, dist, dot, scale, sub, unit, v, type Vec3 } from "../vec3";
 
 export type PulldownGripType = "overhand" | "underhand" | "neutral";
-export type PulldownAttachment = "straight_bar" | "neutral_bar";
+export type PulldownAttachment = "straight_bar" | "neutral_bar" | "v_bar";
 
 /**
  * Where in the pull each joint keyframe sits, as bar progress (0 = top, arms overhead; 1 = bottom). Between keyframes
@@ -301,7 +301,7 @@ export const PULLDOWN_VARIANTS = Object.fromEntries(
 /**
  * Pulldown variations (grip and attachment). wide_overhand is Tony's baseline; the others are PLACEHOLDER starting
  * points for Tony to tune in Motion Lab and paste back. Shared across variations: pulley and tempo. Tony dropped the
- * V-handle (2026-10-09).
+ * V-handle (2026-10-09) and asked for the close-grip V-bar (2026-10-10).
  */
 export const PULLDOWN_SETUPS = {
   wide_overhand: GOOD_PULLDOWN,
@@ -345,6 +345,28 @@ export const PULLDOWN_SETUPS = {
       shoulder_elevation: [142.3, 104.9, 52.6, 23.9],
       shoulder_plane_of_elevation: [67.5, 63.5, 57.3, 37],
       elbow_flexion: [16.9, 59.7, 110, 131.1],
+    },
+  },
+  // Close-grip V-bar (Tony asked 2026-10-10). PLACEHOLDER keys by Claude for Tony to tune: neutral grip, hands ~16 cm
+  // apart, so the arms reach up and in at the top (plane past 90°, elbows near straight) and the pull is almost all
+  // shoulder extension with the elbows in front of the trunk, bar straight down to the upper chest. Tempo and pauses as
+  // the neutral bar.
+  close_v_bar: {
+    ...GOOD_PULLDOWN,
+    gripType: "neutral",
+    attachment: "v_bar",
+    gripWidthXShoulder: 0.4,
+    bottomPauseS: 0.15,
+    topPauseS: 0.2,
+    pacing: { concentric: [0.3, 0.4, 0.3], eccentric: [0.25, 0.4, 0.35] },
+    joints: {
+      trunk_flexion: [-8, -12, -16, -18],
+      scapular_elevation: [8.63, 4.88, -2.29, -5.74],
+      scapular_protraction: [0, -1.15, -3.15, -4.3],
+      scapular_upward_rotation: [0, 0, 0, 0],
+      shoulder_elevation: [150, 110, 60, 20],
+      shoulder_plane_of_elevation: [110, 100, 97.5, 92.5],
+      elbow_flexion: [12, 60, 105, 125],
     },
   },
 } satisfies Record<string, PulldownProfile>;

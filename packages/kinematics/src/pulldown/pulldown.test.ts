@@ -328,6 +328,15 @@ describe("pulldown variations", () => {
     expect(evaluatePulldownRep({ ...r[0]!.features, tempo_variation_pct: 30 }).find((c) => c.id === "tempo_consistent")!.status).toBe("fail");
   });
 
+  it.each(Object.keys(PULLDOWN_SETUPS) as PulldownSetup[])("%s: the good rep passes its grip's limits from every camera angle", (setup) => {
+    const params = pulldownParamsFor(DEFAULT_PULLDOWN_PARAMS, setup);
+    for (const az of [90, 135, 180, 225]) {
+      for (const rep of analyzePulldown(synthesizePulldown(pulldownProfileFor(setup), { camera: at(az) }), params).reps) {
+        expect(rep.checks.filter((c) => c.status === "fail").map((c) => c.id)).toEqual([]);
+      }
+    }
+  }, 30_000);
+
   it("judges each grip with its own limits (Tony, 2026-10-10)", () => {
     const wide = pulldownParamsFor(DEFAULT_PULLDOWN_PARAMS, "wide_overhand");
     const narrow = pulldownParamsFor(DEFAULT_PULLDOWN_PARAMS, "narrow_underhand");

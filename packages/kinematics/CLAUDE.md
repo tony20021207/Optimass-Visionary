@@ -82,6 +82,8 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
 - Yank detection (Tony, 2026-10-09): per-frame angular (`*_acc_dps2`) and vector landmark (`*_acc_mps2`) acceleration;
   check no_yank on wrist_peak_acc_mps2 (fault `yanking`, not in the Tier 2 YAML yet). Elbow/shoulder/trunk
   accelerations are info only: too noisy to separate a yank on synthetic data.
+- Close-grip V-bar (Tony asked 2026-10-10): setup close_v_bar (attachment v_bar, neutral grip, 0.4x shoulder width).
+  Keys and its per-grip limits are Claude's PLACEHOLDER starting point until Tony pastes his Motion Lab baseline.
 - Tier 2 sheet errors (2026-10-10, /mnt/project-files/reviews/pulldown-overhand-form-errors.md): faults
   early_elbow_flexion, scapular_protraction, elbow_lockout_top, shoulder_internal_rotation with checks
   elbow_follows_shoulder (`elbow_lead_first_third`), shoulders_stay_back (`shoulder_protraction_x_trunk`, rough: hip-to-ear

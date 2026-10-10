@@ -237,6 +237,12 @@
       "pull_along_line": { "min": 6, "max": 12, "why": "PLACEHOLDER set around Tony's neutral bar baseline (2026-10-10): the bar comes down ~8-10° off vertical; elbows drifting forward (~19°) still fails." },
       "limited_internal_rotation_at_bottom": { "min": -46, "why": "PLACEHOLDER set past Tony's neutral bar baseline (2026-10-10): ~30° internal at the bottom, read ~30-38°." },
       "no_yank": { "max": 14.1, "why": "PLACEHOLDER set just past Tony's neutral bar baseline (2026-10-10) with his pacing on: 8 m/s² on the ~0.57 m arm (good rep up to ~7.2 m/s²; yank ~10.4-11.5)." }
+    },
+    "close_v_bar": {
+      "elbows_reach_trunk_line": { "min": -22, "why": "PLACEHOLDER set past Claude's close-grip V-bar starting keys (2026-10-10): the elbows finish ~17-19° in front of the trunk line." },
+      "pull_along_line": { "min": -3, "max": 4, "why": "PLACEHOLDER set around Claude's close-grip V-bar starting keys (2026-10-10): the bar comes about straight down (~-1° to 1°)." },
+      "forearms_on_line": { "max": 13, "why": "PLACEHOLDER set past Claude's close-grip V-bar starting keys (2026-10-10): forearms ~9.5-10.5° off the cable." },
+      "forearms_on_line_front": { "max": 29, "why": "PLACEHOLDER set past Claude's close-grip V-bar starting keys (2026-10-10): hands sit inside the elbows, so the forearms tilt in ~24-26° from the front." }
     }
   }
 }
