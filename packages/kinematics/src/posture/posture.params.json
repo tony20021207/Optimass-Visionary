@@ -5,19 +5,19 @@
   "checks": [
     {
       "id": "head_forward",
-      "feature": "head_forward_m",
-      "max": 0.04,
+      "feature": "head_forward_deg",
+      "max": 11,
       "finding": "forward_head_posture",
-      "why": "Ears should sit roughly over the shoulders from the side.",
+      "why": "Ears should sit roughly over the shoulders from the side. An angle so it holds for any body size (Tony, 2026-10-10): 11° = the old 0.04 m on the synthetic lifter (~0.2 m shoulder to ear).",
       "placeholder": true
     },
     {
       "id": "shoulders_over_hips",
-      "feature": "shoulders_forward_m",
-      "min": -0.04,
-      "max": 0.04,
+      "feature": "shoulders_forward_deg",
+      "min": -4.5,
+      "max": 4.5,
       "finding": "rounded_shoulders",
-      "why": "Shoulders should sit roughly over the hips from the side. Forward = rounded shoulders or thoracic flexion; MediaPipe can't tell which.",
+      "why": "Shoulders should sit roughly over the hips from the side. Forward = rounded shoulders or thoracic flexion; MediaPipe can't tell which. An angle so it holds for any body size (Tony, 2026-10-10): 4.5° = the old 0.04 m on the synthetic lifter's ~0.5 m trunk.",
       "placeholder": true
     },
     {
@@ -65,11 +65,11 @@
     },
     {
       "id": "trunk_centered",
-      "feature": "trunk_lateral_shift_m",
-      "min": -0.03,
-      "max": 0.03,
+      "feature": "trunk_lateral_shift_deg",
+      "min": -3.5,
+      "max": 3.5,
       "finding": "lateral_trunk_shift",
-      "why": "Shoulders centered over the hips from the front or back.",
+      "why": "Shoulders centered over the hips from the front or back. An angle so it holds for any body size (Tony, 2026-10-10): 3.5° = the old 0.03 m on the synthetic lifter's ~0.5 m trunk.",
       "placeholder": true
     },
     {

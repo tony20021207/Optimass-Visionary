@@ -449,4 +449,17 @@ describe("grip from arm lengths", () => {
     const rounded = { ...p, scapulaRest: rest("rounded_shoulders") };
     for (const prog of [0, 0.5, 1]) expect(poseAt(prog, rounded).left_shoulder.z - poseAt(prog, p).left_shoulder.z).toBeGreaterThan(0.04);
   }, 30_000);
+
+  it("judges distances in proportion to the lifter, so a bigger body passes the same checks (Tony, 2026-10-10)", () => {
+    const p = { ...pulldownProfileFor("wide_overhand"), noiseM: 0 };
+    const b = PULLDOWN_SYNTH_BODY;
+    const k = 1.25;
+    const big = { ...p, body: { ...b, trunk: b.trunk * k, shoulderHalfWidth: b.shoulderHalfWidth * k, hipHalfWidth: b.hipHalfWidth * k, upperArm: { left: b.upperArm.left * k, right: b.upperArm.right * k }, forearm: { left: b.forearm.left * k, right: b.forearm.right * k }, thigh: b.thigh * k, shin: b.shin * k } };
+    const f = (q: typeof p) => analyzePulldown(synthesizePulldown(q, { camera: at(135) })).reps[1]!.features;
+    const small = f(p);
+    const large = f(big);
+    expect(large.bar_bottom_rel_shoulder_m! / small.bar_bottom_rel_shoulder_m!).toBeGreaterThan(1.15);
+    expect(large.bar_bottom_rel_shoulder_x_arm!).toBeCloseTo(small.bar_bottom_rel_shoulder_x_arm!, 2);
+    expect(Math.abs(large.bar_tilt_max_deg! - small.bar_tilt_max_deg!)).toBeLessThan(0.5);
+  }, 30_000);
 });

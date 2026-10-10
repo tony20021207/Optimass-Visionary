@@ -22,10 +22,10 @@
     },
     {
       "id": "bar_reaches_chest",
-      "feature": "bar_bottom_rel_shoulder_m",
-      "max": 0.18,
+      "feature": "bar_bottom_rel_shoulder_x_arm",
+      "max": 0.32,
       "fault": "incomplete_bottom_rom",
-      "why": "Bar should come down at least to chin level. Loosened from 0.05 when the bottom was redefined by the elbows reaching the trunk line (Tony, 2026-10-07).",
+      "why": "Bar should come down at least to chin level. In arm lengths so it scales with the lifter (Tony, 2026-10-10): 0.32 = the old 0.18 m on the synthetic lifter's ~0.57 m arm. Loosened from 0.05 m when the bottom was redefined by the elbows reaching the trunk line (Tony, 2026-10-07).",
       "placeholder": true
     },
     {
@@ -112,10 +112,10 @@
     },
     {
       "id": "head_stays_in_line",
-      "feature": "head_forward_change_m",
-      "max": 0.05,
+      "feature": "head_forward_change_x_trunk",
+      "max": 0.095,
       "fault": "forward_head",
-      "why": "The head should stay in line with the trunk instead of poking forward to meet the bar. Measured from the shoulder joints, so shoulder blade retraction also reads as head-forward (~0.015-0.03 m on the good rep); raised from 0.03 to 0.05 for that (2026-10-09).",
+      "why": "The head should stay in line with the trunk instead of poking forward to meet the bar. In trunk lengths so it scales with the lifter (Tony, 2026-10-10): 0.095 = the old 0.05 m on the synthetic lifter's ~0.53 m trunk. Measured from the shoulder joints, so shoulder blade retraction also reads as head-forward (good rep up to ~0.08); forward head ~0.13+.",
       "placeholder": true
     },
     {
@@ -136,10 +136,10 @@
     },
     {
       "id": "bar_stays_level",
-      "feature": "wrist_height_asymmetry_m",
-      "max": 0.04,
+      "feature": "bar_tilt_max_deg",
+      "max": 3.5,
       "fault": "asymmetric_pull",
-      "why": "Both hands should arrive together; a tilted bar means one side is doing less.",
+      "why": "Both hands should arrive together; a tilted bar means one side is doing less. An angle, so it holds for any grip width and body size (Tony, 2026-10-10; was 0.04 m of wrist height difference). Good reps up to ~1.1° on every grip, elbows-forward close grip ~2.7°, one side lagging 5.3°+.",
       "placeholder": true
     },
     {

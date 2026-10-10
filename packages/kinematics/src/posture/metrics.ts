@@ -15,6 +15,10 @@ export const POSTURE_FEATURES = {
   shoulder_tilt_deg: { plane: "frontal", label: "Shoulder line tilt (deg, + = left shoulder higher)" },
   pelvic_tilt_deg: { plane: "frontal", label: "Hip line tilt (deg, + = left hip higher). Hip joint landmarks, not the iliac crests." },
   trunk_lateral_shift_m: { plane: "frontal", label: "Shoulders shifted sideways over the hips (m, + = to the left)" },
+  // Angle versions of the distances above, so the same limit holds for any body size (Tony, 2026-10-10).
+  head_forward_deg: { plane: "sagittal", label: "Ears ahead of the shoulders, as the shoulder-to-ear line's angle from vertical (deg, + = forward)" },
+  shoulders_forward_deg: { plane: "sagittal", label: "Shoulders ahead of the hips, as the trunk line's angle from vertical (deg, + = forward)" },
+  trunk_lateral_shift_deg: { plane: "frontal", label: "Shoulders shifted sideways over the hips, as the trunk line's angle from vertical (deg, + = to the left)" },
   left_knee_valgus_deg: { plane: "frontal", label: "Left knee inside the hip-ankle line (deg, + = valgus)" },
   right_knee_valgus_deg: { plane: "frontal", label: "Right knee inside the hip-ankle line (deg, + = valgus)" },
 } as const;
@@ -65,6 +69,9 @@ export function postureFeatures(seq: PoseSequence): PostureFeatures {
     shoulder_tilt_deg: tiltDeg(p.left_shoulder, p.right_shoulder, left),
     pelvic_tilt_deg: tiltDeg(p.left_hip, p.right_hip, left),
     trunk_lateral_shift_m: dot(sub(shoulderMid, hipMid), left),
+    head_forward_deg: Math.atan2(dot(sub(earMid, shoulderMid), forward), dot(sub(earMid, shoulderMid), UP)) * RAD_TO_DEG,
+    shoulders_forward_deg: Math.atan2(dot(sub(shoulderMid, hipMid), forward), dot(sub(shoulderMid, hipMid), UP)) * RAD_TO_DEG,
+    trunk_lateral_shift_deg: Math.atan2(dot(sub(shoulderMid, hipMid), left), dot(sub(shoulderMid, hipMid), UP)) * RAD_TO_DEG,
     // Medial is toward the midline: rightward for the left knee, leftward for the right knee.
     left_knee_valgus_deg: kneeDeviationDeg(p.left_hip, p.left_knee, p.left_ankle, forward, right),
     right_knee_valgus_deg: kneeDeviationDeg(p.right_hip, p.right_knee, p.right_ankle, forward, left),

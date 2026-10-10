@@ -93,6 +93,9 @@ function landmarkTracks(seq: PoseSequence, window: number): Record<PoseLandmarkN
  * - `wrist_mid_height_m`: wrist midpoint height above the shoulder midpoint (bar-height proxy).
  * - `grip_width_x_shoulder`: wrist-to-wrist distance ÷ shoulder-to-shoulder distance (hand spacing on the bar).
  * - `wrist_height_diff_m`: left wrist height minus right (bar tilt).
+ * - `bar_tilt_deg`: the wrist-to-wrist line's angle from horizontal (+ = left hand higher); bar tilt independent of grip width.
+ * - `trunk_length_m`, `arm_length_m`: hip midpoint to shoulder midpoint, and shoulder → elbow → wrist (mean of both
+ *   sides), for judging distances in proportion to the lifter.
  * - `elbow_flexion_diff_deg`: left minus right elbow flexion.
  * - `<angle>_vel_dps`, `<angle>_acc_dps2`: first and second time derivatives of each angle above.
  * - `<landmark>_speed_mps`: linear speed of wrists, elbows and shoulders relative to the hip midpoint
@@ -181,6 +184,15 @@ export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): 
       put(`${side}_forearm_front_tilt_deg`, i, Math.atan2(dot(forearm, outward), dot(forearm, UP)) * RAD_TO_DEG);
     }
     put("wrist_height_diff_m", i, dot(sub(p("left_wrist"), p("right_wrist")), UP));
+    const hands = sub(p("left_wrist"), p("right_wrist"));
+    put("bar_tilt_deg", i, Math.atan2(dot(hands, UP), norm(rejectFrom(hands, UP))) * RAD_TO_DEG);
+    // Body dimensions, so distances can be judged in proportion to the lifter (Tony, 2026-10-10).
+    put("trunk_length_m", i, norm(trunk));
+    put(
+      "arm_length_m",
+      i,
+      (dist(p("left_shoulder"), p("left_elbow")) + dist(p("left_elbow"), p("left_wrist")) + dist(p("right_shoulder"), p("right_elbow")) + dist(p("right_elbow"), p("right_wrist"))) / 2,
+    );
   }
   metrics.elbow_flexion_diff_deg = metrics.left_elbow_flexion_deg!.map((l, i) => l - metrics.right_elbow_flexion_deg![i]!);
 

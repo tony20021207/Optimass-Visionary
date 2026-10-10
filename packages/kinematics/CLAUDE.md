@@ -66,6 +66,10 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
   (`profile.scapulaRest`, from `pulldownScapulaRestFromPosture(postureScreen(...))`, PLACEHOLDER mapping in
   joints/end-ranges.json `postureRest`). End-range stops apply to rest + key. Old metre keys were converted on the 0.2 m
   model clavicle (poses within 1 mm).
+- Proportional limits (Tony, 2026-10-10): distance checks are judged in body proportions so they hold for any lifter.
+  Pulldown: bar_reaches_chest on `bar_bottom_rel_shoulder_x_arm` (arm lengths), head_stays_in_line on
+  `head_forward_change_x_trunk` (trunk lengths), bar_stays_level on `bar_tilt_max_deg`. Posture: head_forward,
+  shoulders_over_hips, trunk_centered on `*_deg` angle features. The metre features stay as reported values.
 - Anatomical end ranges (Tony, 2026-10-10): `src/joints/end-ranges.json` (PLACEHOLDER, Tony to set) gives each joint
   motion's stop in its − and + direction; `jointsAt` clamps to it (scapular upward rotation: the rhythm + deviation total,
   in shoulderAt) and Motion Lab's joint sliders stop there. Because anatomy caps one side, checks only bound the side a
