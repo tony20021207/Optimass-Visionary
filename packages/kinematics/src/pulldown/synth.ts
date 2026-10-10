@@ -117,6 +117,8 @@ export interface PulldownProfile {
   yank: number;
   /** The lifter's bone lengths (pulldownBodyFromSkeleton); the default synthetic lifter when absent. */
   body?: PulldownBody;
+  /** How the keyframes become motion (jointCurveAt); "pchip" when absent. */
+  jointCurve?: PulldownJointCurve;
   /** How the scapula upwardly rotates with arm elevation for this variation; DEFAULT_SCAPULAR_RHYTHM when absent. */
   scapularRhythm?: ScapularRhythm;
   /** Std. dev. of per-landmark jitter added to world coordinates, mimicking estimation noise. */
@@ -363,8 +365,55 @@ export function clipSeconds(p: PulldownProfile): number {
   return p.leadS + p.reps * (p.concentricS + p.bottomPauseS + p.eccentricS + p.topPauseS) + 0.3;
 }
 
+/**
+ * Smoothest curve through the keyframes (Tony, 2026-10-10: the keys draw the curve, the motion should be smooth). Slopes at
+ * the keys come from a natural cubic spline, so the curve bends continuously through each key instead of changing
+ * curvature there (PCHIP did). Where that slope would make a joint overshoot a key or turn back (the one-direction rule),
+ * it is cut back (Hyman's limit), so each joint still only moves one way between keys.
+ */
+function splineCurve(ys: readonly number[], x: number): number {
+  const xs = PULLDOWN_KEY_AT;
+  const n = xs.length;
+  if (x <= xs[0]!) return ys[0]!;
+  if (x >= xs[n - 1]!) return ys[n - 1]!;
+  const h = (i: number) => xs[i + 1]! - xs[i]!;
+  const sec = (i: number) => (ys[i + 1]! - ys[i]!) / h(i);
+  // Natural spline second derivatives M (M at both ends = 0), tridiagonal solve.
+  const M = new Array<number>(n).fill(0);
+  const diag: number[] = [];
+  const rhs: number[] = [];
+  for (let i = 1; i < n - 1; i++) {
+    diag.push(2 * (h(i - 1) + h(i)));
+    rhs.push(6 * (sec(i) - sec(i - 1)));
+  }
+  for (let k = 1; k < diag.length; k++) {
+    const w = h(k) / diag[k - 1]!;
+    diag[k] = diag[k]! - w * h(k);
+    rhs[k] = rhs[k]! - w * rhs[k - 1]!;
+  }
+  for (let k = diag.length - 1; k >= 0; k--) M[k + 1] = (rhs[k]! - (k < diag.length - 1 ? h(k + 1) * M[k + 2]! : 0)) / diag[k]!;
+  const slope = (i: number) => {
+    const raw = i < n - 1 ? sec(i) - (h(i) * (2 * M[i]! + M[i + 1]!)) / 6 : sec(n - 2) + (h(n - 2) * (M[n - 2]! + 2 * M[n - 1]!)) / 6;
+    const left = i > 0 ? sec(i - 1) : sec(0);
+    const right = i < n - 1 ? sec(i) : sec(n - 2);
+    if (left * right <= 0 || raw * right <= 0) return 0;
+    return Math.sign(right) * Math.min(Math.abs(raw), 3 * Math.min(Math.abs(left), Math.abs(right)));
+  };
+  let i = 0;
+  while (x > xs[i + 1]!) i++;
+  const t = (x - xs[i]!) / h(i);
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return (
+    (2 * t3 - 3 * t2 + 1) * ys[i]! +
+    (t3 - 2 * t2 + t) * h(i) * slope(i) +
+    (-2 * t3 + 3 * t2) * ys[i + 1]! +
+    (t3 - t2) * h(i) * slope(i + 1)
+  );
+}
+
 /** Monotone cubic (PCHIP) through the keyframes: smooth, and never overshoots between two keyframe values. */
-function keyCurve(ys: readonly number[], x: number): number {
+function pchipCurve(ys: readonly number[], x: number): number {
   const xs = PULLDOWN_KEY_AT;
   const n = xs.length;
   if (x <= xs[0]!) return ys[0]!;
@@ -392,9 +441,21 @@ function keyCurve(ys: readonly number[], x: number): number {
   );
 }
 
+/**
+ * How the keyframes become motion. Both pass through every key and keep each joint moving one way between keys.
+ * - "pchip": each key bends the curve on its own (curvature changes at the keys). What the presets were tuned with.
+ * - "smooth": curvature carries through the keys (natural-spline slopes), so the motion has no visible corners.
+ */
+export type PulldownJointCurve = "pchip" | "smooth";
+
+/** One joint's value at rep progress `prog` from its keys. */
+export function jointCurveAt(ys: readonly number[], prog: number, curve: PulldownJointCurve = "pchip"): number {
+  return curve === "smooth" ? splineCurve(ys, prog) : pchipCurve(ys, prog);
+}
+
 /** Every joint's value at rep progress `prog`. */
 export function jointsAt(p: PulldownProfile, prog: number): Record<PulldownJointName, number> {
-  return Object.fromEntries(PULLDOWN_JOINT_NAMES.map((n) => [n, keyCurve(p.joints[n], prog)])) as Record<PulldownJointName, number>;
+  return Object.fromEntries(PULLDOWN_JOINT_NAMES.map((n) => [n, jointCurveAt(p.joints[n], prog, p.jointCurve)])) as Record<PulldownJointName, number>;
 }
 
 // Body frame: x = toward the lifter's left, y = up, z = forward (the way the lifter faces). Origin at the hip midpoint.
@@ -535,7 +596,7 @@ const trackCache = new Map<string, ArmOnBar[]>();
  */
 function armTrack(p: PulldownProfile, s: 1 | -1): ArmOnBar[] {
   const body = bodyOf(p);
-  const key = JSON.stringify([p.joints, p.gripWidthXShoulder, body, s]);
+  const key = JSON.stringify([p.joints, p.jointCurve, rhythmOf(p), p.gripWidthXShoulder, body, s]);
   const hit = trackCache.get(key);
   if (hit) return hit;
   if (trackCache.size > 64) trackCache.clear();

@@ -41,7 +41,7 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
   (`profile.scapularRhythm`: glenohumeral:scapular ratio + onset; PLACEHOLDER 2:1 after 30°). The
   `scapular_upward_rotation` keys are a deviation from it (0 = normal); each joint is still judged on its own.
 - Pulldown joint keyframes: each variation sets catalogue joints at PULLDOWN_KEY_AT (top and each phase end: time
-  thirds, i.e. 0, 0.25, 0.75, 1 of bar travel on the eased pull), joined by a monotone cubic. Pulley and tempo are shared. Closed chain: shoulder rotation is solved so the hand
+  thirds, i.e. 0, 0.25, 0.75, 1 of bar travel on the eased pull), joined by a monotone cubic (PCHIP; `profile.jointCurve: "smooth"` uses natural-spline slopes with Hyman's limit instead: still through every key and one-way between keys, but without curvature corners at the keys, Tony 2026-10-10). Pulley and tempo are shared. Closed chain: shoulder rotation is solved so the hand
   sits on the bar at the grip width (followed continuously from the top), and the plane of elevation shifts only when no
   rotation reaches the bar (pulldownArmOnBar). Presets were fitted to the earlier model (hand within ~6 cm, same check results). Faults
   (PULLDOWN_FAULTS) add joint deltas, so they work on every variation.

@@ -6,6 +6,9 @@ import { POSTURE_VARIANTS, synthesizePostureScreen } from "../posture";
 import {
   DEFAULT_PULLDOWN_PARAMS,
   elbowFlexionHoldingForearm,
+  jointsAt,
+  PULLDOWN_JOINT_NAMES,
+  PULLDOWN_KEY_AT,
   pulldownForearmToCableDeg,
   GOOD_PULLDOWN,
   pulldownCamera,
@@ -263,6 +266,29 @@ describe("pulldown variations", () => {
     expect(Math.abs(b.left_wrist.x - b.right_wrist.x) / 0.4).toBeCloseTo(p.gripWidthXShoulder, 2);
     // Unchanged when the forearm is already where it should be.
     expect(elbowFlexionHoldingForearm(p, 3, target)).toBe(p.joints.elbow_flexion[3]);
+  });
+
+  it.each(Object.keys(PULLDOWN_SETUPS) as PulldownSetup[])("%s: the smooth curve hits every key, moves one way between keys and has no corners", (setup) => {
+    const base = pulldownProfileFor(setup);
+    const N = 200;
+    // Largest jump in a joint's curvature (third difference), where the old curve kinks at the keys.
+    const corner = (p: typeof base, n: (typeof PULLDOWN_JOINT_NAMES)[number]) => {
+      const a = Array.from({ length: N + 1 }, (_, i) => jointsAt(p, i / N)[n]);
+      return Math.max(...a.slice(2, -1).map((x, i) => Math.abs(a[i + 3]! - 3 * x + 3 * a[i + 1]! - a[i]!)));
+    };
+    const smooth = { ...base, jointCurve: "smooth" as const };
+    for (const n of PULLDOWN_JOINT_NAMES) {
+      PULLDOWN_KEY_AT.forEach((k, i) => expect(jointsAt(smooth, k)[n]).toBeCloseTo(smooth.joints[n][i]!, 9));
+      for (let i = 0; i < PULLDOWN_KEY_AT.length - 1; i++) {
+        const [lo, hi] = [smooth.joints[n][i]!, smooth.joints[n][i + 1]!].sort((x, y) => x - y);
+        for (let t = PULLDOWN_KEY_AT[i]!; t <= PULLDOWN_KEY_AT[i + 1]!; t += 0.01) {
+          const y = jointsAt(smooth, t)[n];
+          expect(y).toBeGreaterThanOrEqual(lo! - 1e-9);
+          expect(y).toBeLessThanOrEqual(hi! + 1e-9);
+        }
+      }
+    }
+    expect(corner(smooth, "elbow_flexion")).toBeLessThan(corner(base, "elbow_flexion") / 10);
   });
 
   it("judges each grip with its own limits (Tony, 2026-10-10)", () => {
