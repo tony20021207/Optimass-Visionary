@@ -7,7 +7,7 @@ import type { Skeleton } from "../body/skeleton";
 import { SYNTH_STATURE_M } from "../posture/synth";
 import { renderSequence, type Body } from "../synth-render";
 import type { JointMotionId } from "../joints/catalogue";
-import { clampToEndRange, jointLimits } from "../joints/end-ranges";
+import { clampToEndRange } from "../joints/end-ranges";
 import { add, cross, dist, dot, scale, sub, unit, v, type Vec3 } from "../vec3";
 
 export type PulldownGripType = "overhand" | "underhand" | "neutral";
@@ -857,64 +857,6 @@ function forearmToCable(p: PulldownProfile, elbow: Vec3, wrist: Vec3): number {
 export function pulldownForearmToCableDeg(p: PulldownProfile, prog: number): number {
   const pose = poseAt(prog, p);
   return forearmToCable(p, pose.left_elbow, pose.left_wrist);
-}
-
-/**
- * Plane of elevation at keyframe `k` that gives the left shoulder `targetDeg` of rotation (+ = external, − = internal)
- * with the hand still on the bar. Closed chain, so rotation can't be keyed directly: to rotate the shoulder the elbow
- * swings around the shoulder-hand line, i.e. the plane changes (elbows flaring out = more internal rotation; Tony,
- * 2026-10-10). Searches outward from the plane in use within its end range and returns the nearest solution, or
- * undefined when no plane reaches that rotation (within 0.5°) with the other joints as keyed.
- */
-export function planeForShoulderRotation(p: PulldownProfile, k: number, targetDeg: number): number | undefined {
-  const at = PULLDOWN_KEY_AT[k]!;
-  const body = bodyOf(p);
-  const start = pulldownArmOnBar(p, at, "left");
-  const j0 = jointsAt(p, at);
-  const [lo, hi] = jointLimits("shoulder_plane_of_elevation");
-  // Shoulder rotation that puts the hand on the bar at plane `pl`, nearest `prevRot` (the arm can't flip mid-drag).
-  const solve = (pl: number, prevRot: number): { miss: number; rot: number } | undefined => {
-    const j = { ...j0, shoulder_plane_of_elevation: pl };
-    const { roots } = rotationsOnBar(shoulderAt(j, 1, body, rhythmOf(p)), j, 1, body, gripHalfWidth(p));
-    if (!roots.length) return undefined;
-    const rot = roots.reduce((x, y) => (Math.abs(wrapDeg(y - prevRot)) < Math.abs(wrapDeg(x - prevRot)) ? y : x));
-    return { miss: wrapDeg(rot - targetDeg), rot };
-  };
-  const plane0 = start.shoulderPlaneOfElevationDeg;
-  const first = solve(plane0, start.shoulderRotationDeg);
-  if (!first) return undefined;
-  if (Math.abs(first.miss) < 0.05) return plane0;
-  let best: number | undefined;
-  for (const dir of [1, -1]) {
-    let prevPl = plane0;
-    let prev = first;
-    for (let pl = plane0 + dir * 0.5; pl >= lo && pl <= hi; pl += dir * 0.5) {
-      const cur = solve(pl, prev.rot);
-      if (!cur || Math.abs(cur.rot - prev.rot) > 30) break;
-      if (prev.miss * cur.miss <= 0) {
-        let a = prevPl;
-        let b = pl;
-        let aS = prev;
-        for (let i = 0; i < 20; i++) {
-          const mid = (a + b) / 2;
-          const m = solve(mid, aS.rot);
-          if (!m) break;
-          if (aS.miss * m.miss <= 0) b = mid;
-          else {
-            a = mid;
-            aS = m;
-          }
-        }
-        const root = (a + b) / 2;
-        const check = solve(root, aS.rot);
-        if (check && Math.abs(check.miss) < 0.5 && (best === undefined || Math.abs(root - plane0) < Math.abs(best - plane0))) best = root;
-        break;
-      }
-      prevPl = pl;
-      prev = cur;
-    }
-  }
-  return best;
 }
 
 /**
