@@ -184,8 +184,6 @@ export const PULLDOWN_SETUPS = {
     lineAheadOfShouldersM: 0.27,
     trunkLeanDeg: 15,
     trunkSwingDeg: 9.5,
-    pulleyAboveHipM: 1.8,
-    pulleyAheadOfKneeM: 0.2,
     concentricS: 1.8,
     eccentricS: 3,
     bottomPauseS: 1,
@@ -200,7 +198,6 @@ export const PULLDOWN_SETUPS = {
     elbowsForward: 0.8,
     forearmOnLine: true,
     lineAheadOfShouldersM: 0.16,
-    pulleyAheadOfKneeM: 0,
   },
 } satisfies Record<string, PulldownProfile>;
 export type PulldownSetup = keyof typeof PULLDOWN_SETUPS;
@@ -462,21 +459,44 @@ function armElevationDeg(pose: Body, leanDeg: number): number {
  * there (the forearm-on-line constraint caps how far back the elbow can go), stops where it gets furthest back.
  */
 function stopOnLine(p: PulldownProfile, top: number, breakDeg: number, endLean: number): number {
-  const behindAt = (t: number) => humerusBehindDeg(poseWithBar(1, p, top, t, breakDeg), endLean) - p.bottomHumerusBehindDeg;
+  let memoT = NaN;
+  let memoPose: Body | undefined;
+  const poseAtT = (t: number) => {
+    if (t !== memoT || !memoPose) {
+      memoT = t;
+      memoPose = poseWithBar(1, p, top, t, breakDeg);
+    }
+    return memoPose;
+  };
+  const behindAt = (t: number) => humerusBehindDeg(poseAtT(t), endLean) - p.bottomHumerusBehindDeg;
+  // Forearm held on the cable: the pull also ends where the arm can't keep it there any more (Tony, 2026-10-09: close
+  // grips stop short of the chest rather than break the forearm off the cable).
+  const offCable = (t: number) => {
+    if (!p.forearmOnLine) return 0;
+    const pose = poseAtT(t);
+    const f = sub(pose.left_wrist, pose.left_elbow);
+    const c = sub(pulleyOf(p), barOnLine(p, t));
+    const e = Math.atan2(f.z, f.y) - Math.atan2(c.z, c.y) - rad(breakDeg);
+    return (Math.abs(Math.atan2(Math.sin(e), Math.cos(e))) * 180) / Math.PI;
+  };
+  // Near the top the arm is almost straight and can't line up yet; the cable rule applies once the forearm is on it.
+  let onCable = false;
+  const stopsAt = (t: number) => behindAt(t) >= 0 || (onCable && offCable(t) > OFF_CABLE_STOP_DEG);
   let bestT = top;
   let best = behindAt(top);
   for (let t = top - 0.005; t >= -0.7; t -= 0.005) {
-    const err = behindAt(t);
-    if (err >= 0) {
+    if (!onCable && offCable(t) <= OFF_CABLE_STOP_DEG) onCable = true;
+    if (stopsAt(t)) {
       let lo = t;
       let hi = t + 0.005;
       for (let i = 0; i < 30; i++) {
         const m = (lo + hi) / 2;
-        if (behindAt(m) >= 0) lo = m;
+        if (stopsAt(m)) lo = m;
         else hi = m;
       }
       return (lo + hi) / 2;
     }
+    const err = behindAt(t);
     if (err > best) {
       best = err;
       bestT = t;
@@ -484,13 +504,16 @@ function stopOnLine(p: PulldownProfile, top: number, breakDeg: number, endLean: 
   }
   return bestT;
 }
+/** With the forearm held on the cable, how far (side view, past the planned break) it may leave it before the pull ends. */
+const OFF_CABLE_STOP_DEG = 8;
 /**
  * Where the bar starts and finishes on the pull line (`t`, see barOnLine). Top: shoulder-to-wrist distance gives
  * `topElbowFlexionDeg` (bisection). Bottom: the trunk-line stop point (stopOnLine), with the forearm break chosen so the
  * arms finish at `bottomArmElevationDeg`.
  */
 export function barTravelFor(p: PulldownProfile): BarTravel {
-  const key = JSON.stringify(p);
+  // Timing, noise and the rep count don't move the bar's end points, so variants differing only there share an entry.
+  const key = JSON.stringify({ ...p, reps: 0, leadS: 0, concentricS: 0, bottomPauseS: 0, eccentricS: 0, topPauseS: 0, yank: 0, noiseM: 0, seed: 0 });
   const cached = barCache.get(key);
   if (cached) return cached;
   if (barCache.size >= BAR_CACHE_MAX) barCache.clear();

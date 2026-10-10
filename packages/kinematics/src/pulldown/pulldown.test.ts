@@ -181,10 +181,11 @@ describe("placeholder parameters vs synthetic reps", () => {
 });
 
 describe("pulldown variations", () => {
-  it.each(Object.keys(PULLDOWN_SETUPS) as PulldownSetup[])("%s: the good rep segments into 3 reps that reach the chest", (setup) => {
+  it.each(Object.keys(PULLDOWN_SETUPS) as PulldownSetup[])("%s: the good rep segments into 3 reps and finishes near shoulder height", (setup) => {
     const report = analyzePulldown(synthesizePulldown(pulldownProfileFor(setup), { camera: at(135) }));
     expect(report.reps).toHaveLength(3);
-    for (const r of report.reps) expect(Math.abs(r.features.bar_bottom_rel_shoulder_m!)).toBeLessThan(0.12);
+    // Close grips stop short of the chest to keep the forearm on the cable (Tony, 2026-10-09).
+    for (const r of report.reps) expect(Math.abs(r.features.bar_bottom_rel_shoulder_m!)).toBeLessThan(setup === "wide_overhand" ? 0.12 : 0.2);
   });
 
   it("close grips pull with more shoulder extension than the wide overhand grip", () => {
