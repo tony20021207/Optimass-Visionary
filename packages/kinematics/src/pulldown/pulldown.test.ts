@@ -1,6 +1,8 @@
 import { POSE_LANDMARK_NAMES, RepSegment } from "@optimass/types";
 import { describe, expect, it } from "vitest";
 import { analyzeKinematics } from "../index";
+import { calibrateSkeleton } from "../body";
+import { POSTURE_VARIANTS, synthesizePostureScreen } from "../posture";
 import {
   DEFAULT_PULLDOWN_PARAMS,
   GOOD_PULLDOWN,
@@ -14,6 +16,8 @@ import {
   PULLDOWN_SYNTH_ARMS,
   recommendedGrip,
   pulldownProfileFor,
+  pulldownBodyFromSkeleton,
+  PULLDOWN_SYNTH_BODY,
   type PulldownSetup,
   pulldownSeries,
   segmentLength,
@@ -229,6 +233,27 @@ describe("pulldown variations", () => {
     expect(p.gripType).toBe("underhand");
     expect(p.gripWidthXShoulder).toBe(1.1);
     expect(p.eccentricS).toBe(PULLDOWN_VARIANTS.fast_eccentric.eccentricS);
+  });
+});
+
+describe("lifter built from the posture check (Tony, 2026-10-10)", () => {
+  it("measures the synthetic lifter's own bones back from its posture captures", () => {
+    const body = pulldownBodyFromSkeleton(calibrateSkeleton(synthesizePostureScreen(POSTURE_VARIANTS.neutral)));
+    expect(body.upperArm.left).toBeCloseTo(PULLDOWN_SYNTH_BODY.upperArm.left, 2);
+    expect(body.forearm.right).toBeCloseTo(PULLDOWN_SYNTH_BODY.forearm.right, 2);
+    expect(body.thigh).toBeCloseTo(PULLDOWN_SYNTH_BODY.thigh, 2);
+  });
+
+  it("moves that person's bones through the same joint angles", () => {
+    const body = { ...PULLDOWN_SYNTH_BODY, upperArm: { left: 0.34, right: 0.33 }, forearm: { left: 0.29, right: 0.29 } };
+    const seq = synthesizePulldown({ ...GOOD_PULLDOWN, body, noiseM: 0 });
+    for (const f of [0, 40, 80]) {
+      expect(segmentLength(seq, f, "left_shoulder", "left_elbow")).toBeCloseTo(0.34, 3);
+      expect(segmentLength(seq, f, "right_shoulder", "right_elbow")).toBeCloseTo(0.33, 3);
+      expect(segmentLength(seq, f, "left_elbow", "left_wrist")).toBeCloseTo(0.29, 3);
+    }
+    const flex = (b?: typeof body) => pulldownSeries(synthesizePulldown({ ...GOOD_PULLDOWN, body: b, noiseM: 0 })).metrics.left_elbow_flexion_deg![40]!;
+    expect(flex(body)).toBeCloseTo(flex(), 0);
   });
 });
 

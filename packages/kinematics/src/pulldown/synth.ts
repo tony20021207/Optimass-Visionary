@@ -3,6 +3,7 @@
 // reference: every body dimension and motion value below is a made-up default chosen to look like a plausible rep.
 import { POSE_LANDMARK_NAMES, type PoseLandmarkName, type PoseSequence } from "@optimass/types";
 import { standardExerciseCamera, type CameraPlacement } from "../camera";
+import type { Skeleton } from "../body/skeleton";
 import { SYNTH_STATURE_M } from "../posture/synth";
 import { renderSequence, type Body } from "../synth-render";
 import { add, cross, dist, norm, rejectFrom, scale, sub, unit, v, type Vec3 } from "../vec3";
@@ -56,6 +57,18 @@ export const PULLDOWN_JOINT_NAMES = [
   "elbowDirectionDeg",
 ] as const satisfies readonly PulldownJointName[];
 
+/** Joint-centre distances of the simulated lifter (m). Arms per side, so a left-right difference carries through. */
+export interface PulldownBody {
+  /** Hip midpoint to shoulder midpoint. */
+  trunk: number;
+  shoulderHalfWidth: number;
+  hipHalfWidth: number;
+  upperArm: { left: number; right: number };
+  forearm: { left: number; right: number };
+  thigh: number;
+  shin: number;
+}
+
 /** How one synthetic set moves. Times are seconds, distances meters, angles degrees. */
 export interface PulldownProfile {
   reps: number;
@@ -89,6 +102,8 @@ export interface PulldownProfile {
    * speed arrives in the first frames of the pull instead of building up).
    */
   yank: number;
+  /** The lifter's bone lengths (pulldownBodyFromSkeleton); the default synthetic lifter when absent. */
+  body?: PulldownBody;
   /** Std. dev. of per-landmark jitter added to world coordinates, mimicking estimation noise. */
   noiseM: number;
   seed: number;
@@ -259,17 +274,43 @@ export function pulldownProfileFor(setup: PulldownSetup, variant: PulldownVarian
 }
 
 /** Made-up anthropometrics for a ~1.75 m lifter, meters. */
-const BODY = {
-  trunk: 0.5, // hip midpoint to shoulder midpoint
+const BODY: PulldownBody = {
+  trunk: 0.5,
   shoulderHalfWidth: 0.2,
   hipHalfWidth: 0.1,
-  upperArm: 0.3,
-  forearm: 0.27,
+  upperArm: { left: 0.3, right: 0.3 },
+  forearm: { left: 0.27, right: 0.27 },
   thigh: 0.43,
   shin: 0.43,
 };
+/** The default synthetic lifter's body (used when a profile has no `body`). */
+export const PULLDOWN_SYNTH_BODY: Readonly<PulldownBody> = BODY;
+
+/**
+ * The lifter's body from the posture check (Tony, 2026-10-10): bone lengths and proportions measured standing, so the
+ * simulation moves this person's skeleton. Pass a skeleton calibrated with the user's height to get real meters.
+ * Trunk and shoulder width come from the standing posture; the girdle still moves during the lift.
+ */
+export function pulldownBodyFromSkeleton(sk: Skeleton): PulldownBody {
+  const len = (k: keyof Skeleton["segments"]) => sk.segments[k].lengthM;
+  const shoulderHalfWidth = len("shoulder_width") / 2;
+  const hipHalfWidth = len("hip_width") / 2;
+  // Side trunk lines run shoulder to hip on each side; the model's trunk is hip midpoint to shoulder midpoint.
+  const side = (len("left_trunk") + len("right_trunk")) / 2;
+  const trunk = Math.sqrt(Math.max(0, side * side - (shoulderHalfWidth - hipHalfWidth) ** 2));
+  return {
+    trunk,
+    shoulderHalfWidth,
+    hipHalfWidth,
+    upperArm: { left: len("left_upper_arm"), right: len("right_upper_arm") },
+    forearm: { left: len("left_forearm"), right: len("right_forearm") },
+    thigh: (len("left_thigh") + len("right_thigh")) / 2,
+    shin: (len("left_shin") + len("right_shin")) / 2,
+  };
+}
+const bodyOf = (p: PulldownProfile): PulldownBody => p.body ?? BODY;
 /** The synthetic lifter's arm dimensions, for the grip formula (grip.ts). */
-export const PULLDOWN_SYNTH_ARMS = { shoulderWidthM: 2 * BODY.shoulderHalfWidth, upperArmM: BODY.upperArm, forearmM: BODY.forearm };
+export const PULLDOWN_SYNTH_ARMS = { shoulderWidthM: 2 * BODY.shoulderHalfWidth, upperArmM: BODY.upperArm.left, forearmM: BODY.forearm.left };
 
 const FPS = 30;
 
@@ -334,10 +375,10 @@ export function jointsAt(p: PulldownProfile, prog: number): Record<PulldownJoint
 // Body frame: x = toward the lifter's left, y = up, z = forward (the way the lifter faces). Origin at the hip midpoint.
 // The lifter sits with thighs horizontal under the knee pad.
 
-const gripHalfWidth = (p: PulldownProfile) => p.gripWidthXShoulder * BODY.shoulderHalfWidth;
+const gripHalfWidth = (p: PulldownProfile) => p.gripWidthXShoulder * bodyOf(p).shoulderHalfWidth;
 
-function shoulderMidAt(leanDeg: number): Vec3 {
-  return v(0, BODY.trunk * Math.cos(rad(leanDeg)), -BODY.trunk * Math.sin(rad(leanDeg)));
+function shoulderMidAt(leanDeg: number, body: PulldownBody): Vec3 {
+  return v(0, body.trunk * Math.cos(rad(leanDeg)), -body.trunk * Math.sin(rad(leanDeg)));
 }
 
 /** Shoulder joint to the scapula's rotation centre, sideways (m). Made-up anatomy for the synthetic lifter. */
@@ -347,21 +388,19 @@ const SCAPULA_ROTATION_RADIUS = 0.1;
  * Shoulder joint (glenohumeral centre) for side `s` (1 = left, −1 = right): trunk position plus shoulder girdle
  * elevation/depression, retraction and downward rotation.
  */
-function shoulderAt(j: Record<PulldownJointName, number>, s: 1 | -1): Vec3 {
+function shoulderAt(j: Record<PulldownJointName, number>, s: 1 | -1, body: PulldownBody): Vec3 {
   const L = v(1, 0, 0);
-  const trunkAxis = unit(shoulderMidAt(j.trunkLeanDeg));
+  const trunkAxis = unit(shoulderMidAt(j.trunkLeanDeg, body));
   const trunkFwd = unit(cross(L, trunkAxis));
   const retraction = j.scapularRetractionM;
   const rot = rad(j.scapularDownwardRotationDeg);
-  const out = BODY.shoulderHalfWidth - 0.4 * retraction - SCAPULA_ROTATION_RADIUS * (1 - Math.cos(rot));
+  const out = body.shoulderHalfWidth - 0.4 * retraction - SCAPULA_ROTATION_RADIUS * (1 - Math.cos(rot));
   const up = j.shoulderElevationM - SCAPULA_ROTATION_RADIUS * Math.sin(rot);
-  return add(add(add(shoulderMidAt(j.trunkLeanDeg), scale(trunkAxis, up)), scale(trunkFwd, -retraction)), scale(L, s * out));
+  return add(add(add(shoulderMidAt(j.trunkLeanDeg, body), scale(trunkAxis, up)), scale(trunkFwd, -retraction)), scale(L, s * out));
 }
 
 /** Shoulder-to-wrist distance for an elbow flexion angle (0 = straight arm). */
-function reachForFlexion(flexionDeg: number): number {
-  const a = BODY.upperArm;
-  const b = BODY.forearm;
+function reachForFlexion(flexionDeg: number, a: number, b: number): number {
   return Math.sqrt(a * a + b * b + 2 * a * b * Math.cos(rad(flexionDeg)));
 }
 
@@ -370,13 +409,13 @@ function reachForFlexion(flexionDeg: number): number {
  * distance the elbow flexion gives, at armAngleDeg from the trunk line seen from the side; the elbow points
  * elbowDirectionDeg around the shoulder-to-hand line.
  */
-function armAt(shoulder: Vec3, j: Record<PulldownJointName, number>, gripHalf: number, s: 1 | -1): { elbow: Vec3; wrist: Vec3 } {
+function armAt(shoulder: Vec3, j: Record<PulldownJointName, number>, gripHalf: number, s: 1 | -1, body: PulldownBody): { elbow: Vec3; wrist: Vec3 } {
   const L = v(1, 0, 0);
-  const U = unit(shoulderMidAt(j.trunkLeanDeg));
+  const U = unit(shoulderMidAt(j.trunkLeanDeg, body));
   const F = cross(L, U);
-  const a = BODY.upperArm;
-  const b = BODY.forearm;
-  const reach = reachForFlexion(j.elbowFlexionDeg);
+  const a = s === 1 ? body.upperArm.left : body.upperArm.right;
+  const b = s === 1 ? body.forearm.left : body.forearm.right;
+  const reach = reachForFlexion(j.elbowFlexionDeg, a, b);
   const dx = s * gripHalf - shoulder.x;
   // Too close a grip for the reach: the hand lands as near to the bar as the arm allows.
   const r = Math.sqrt(Math.max(0, reach * reach - dx * dx));
@@ -399,17 +438,18 @@ export function poseAt(prog: number, p: PulldownProfile): Body {
   const L = v(1, 0, 0);
   const U = v(0, 1, 0);
   const F = v(0, 0, 1);
+  const body = bodyOf(p);
   const j = jointsAt(p, prog);
-  const trunkAxis = unit(shoulderMidAt(j.trunkLeanDeg));
-  const neckBase = shoulderMidAt(j.trunkLeanDeg); // head does not move with the shoulder girdle
+  const trunkAxis = unit(shoulderMidAt(j.trunkLeanDeg, body));
+  const neckBase = shoulderMidAt(j.trunkLeanDeg, body); // head does not move with the shoulder girdle
 
   const pose = {} as Body;
   for (const [side, s] of [["left", 1], ["right", -1]] as const) {
     const js = side === "right" && p.rightArmLag ? jointsAt(p, prog * (1 - p.rightArmLag)) : j;
     // The trunk is shared: only the arm and girdle lag.
     const jArm = { ...js, trunkLeanDeg: j.trunkLeanDeg };
-    const shoulder = shoulderAt(jArm, s);
-    const { elbow, wrist } = armAt(shoulder, jArm, gripHalfWidth(p), s);
+    const shoulder = shoulderAt(jArm, s, body);
+    const { elbow, wrist } = armAt(shoulder, jArm, gripHalfWidth(p), s, body);
     const forearmDir = unit(sub(wrist, elbow));
     // Thumbs point toward the midline overhand, away from it underhand, and back toward the face on a neutral grip.
     const thumbSide = p.gripType === "underhand" ? scale(L, s) : p.gripType === "neutral" ? scale(F, -1) : scale(L, -s);
@@ -420,9 +460,9 @@ export function poseAt(prog: number, p: PulldownProfile): Body {
     pose[`${side}_pinky`] = add(add(wrist, scale(forearmDir, 0.08)), scale(thumbSide, -0.03));
     pose[`${side}_thumb`] = add(add(wrist, scale(forearmDir, 0.05)), scale(thumbSide, 0.03));
 
-    const hip = scale(L, s * BODY.hipHalfWidth);
-    const knee = add(hip, scale(F, BODY.thigh));
-    const ankle = add(add(knee, scale(U, -BODY.shin)), scale(F, 0.05));
+    const hip = scale(L, s * body.hipHalfWidth);
+    const knee = add(hip, scale(F, body.thigh));
+    const ankle = add(add(knee, scale(U, -body.shin)), scale(F, 0.05));
     pose[`${side}_hip`] = hip;
     pose[`${side}_knee`] = knee;
     pose[`${side}_ankle`] = ankle;
@@ -453,9 +493,13 @@ export const PULLDOWN_CAMERA_HEIGHT_M = PULLDOWN_HIP_HEIGHT_M + BODY.trunk;
 /** The synthetic lifter's standing height, for the protocol camera distance. */
 export const PULLDOWN_STATURE_M = SYNTH_STATURE_M;
 
-/** The protocol camera for the synthetic pulldown, optionally moved to another azimuth. */
-export function pulldownCamera(azimuthDeg?: number): CameraPlacement {
-  return standardExerciseCamera(PULLDOWN_CAMERA_HEIGHT_M, PULLDOWN_STATURE_M, azimuthDeg);
+/**
+ * The protocol camera for the synthetic pulldown, optionally moved to another azimuth. With a body, the lens sits at
+ * that lifter's seated shoulder height.
+ */
+export function pulldownCamera(azimuthDeg?: number, body?: PulldownBody): CameraPlacement {
+  const lens = body ? PULLDOWN_HIP_HEIGHT_M + body.trunk : PULLDOWN_CAMERA_HEIGHT_M;
+  return standardExerciseCamera(lens, PULLDOWN_STATURE_M, azimuthDeg);
 }
 
 /** Builds a PoseSequence (33 image + 33 world landmarks per frame) for a synthetic pulldown set. */
@@ -463,7 +507,7 @@ export function synthesizePulldown(
   profile: PulldownProfile,
   options: { camera?: CameraPlacement; id?: string } = {},
 ): PoseSequence {
-  const camera = options.camera ?? pulldownCamera();
+  const camera = options.camera ?? pulldownCamera(undefined, profile.body);
   return renderSequence({
     id: options.id ?? `synthetic-lat-pulldown-az${camera.azimuthDeg}`,
     exerciseId: "lat_pulldown",
@@ -486,7 +530,7 @@ export function segmentLength(seq: PoseSequence, frame: number, a: PoseLandmarkN
 }
 
 /** The pulley in the body frame: pulleyAboveHipM over the hips, pulleyAheadOfKneeM ahead of the knees. */
-export const pulleyOf = (p: PulldownProfile): Vec3 => v(0, p.pulleyAboveHipM, BODY.thigh + p.pulleyAheadOfKneeM);
+export const pulleyOf = (p: PulldownProfile): Vec3 => v(0, p.pulleyAboveHipM, bodyOf(p).thigh + p.pulleyAheadOfKneeM);
 
 /** The bar's line of pull from the top to the bottom of the rep, tilt from vertical (degrees, + = top end forward). */
 export function pullLineDegOf(p: PulldownProfile): number {

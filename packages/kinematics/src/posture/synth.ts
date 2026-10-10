@@ -3,7 +3,7 @@
 import type { PoseSequence } from "@optimass/types";
 import { CAPTURE_PROTOCOL, type CameraPlacement } from "../camera";
 import { renderSequence, type Body } from "../synth-render";
-import { add, v } from "../vec3";
+import { add, scale, unit, v } from "../vec3";
 
 export interface PostureProfile {
   /** Ears this far ahead of the shoulders (m). */
@@ -18,6 +18,9 @@ export interface PostureProfile {
   kneeValgusDeg: number;
   /** Knees pushed back past straight by this sagittal-plane angle (deg), both sides. */
   kneeHyperextensionDeg: number;
+  /** Bone lengths, shoulder to elbow and elbow to wrist (m), so a posture check can describe a different lifter. */
+  upperArmM: number;
+  forearmM: number;
   noiseM: number;
   seed: number;
 }
@@ -29,6 +32,8 @@ export const NEUTRAL_POSTURE: PostureProfile = {
   rightHipDropM: 0,
   kneeValgusDeg: 0,
   kneeHyperextensionDeg: 0,
+  upperArmM: 0.3,
+  forearmM: 0.27,
   noiseM: 0.004,
   seed: 11,
 };
@@ -61,8 +66,9 @@ export function standingPose(p: PostureProfile): Body {
     const knee = v(s * (0.1 - legBend(p.kneeValgusDeg)), hip.y - THIGH, -0.01 - legBend(p.kneeHyperextensionDeg));
     const shoulderY = 0.5 + (side === "right" ? -p.rightShoulderDropM / 2 : p.rightShoulderDropM / 2);
     const shoulder = v(s * 0.2, shoulderY, p.shouldersForwardM);
-    const elbow = add(shoulder, v(s * 0.03, -0.3, 0.02));
-    const wrist = add(elbow, v(0, -0.27, 0.03));
+    // Arms hang slightly out and forward; the offsets scale with the bone lengths.
+    const elbow = add(shoulder, scale(unit(v(s * 0.03, -0.3, 0.02)), p.upperArmM));
+    const wrist = add(elbow, scale(unit(v(0, -0.27, 0.03)), p.forearmM));
     Object.assign(pose, {
       [`${side}_hip`]: hip,
       [`${side}_knee`]: knee,

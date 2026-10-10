@@ -33,6 +33,8 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
   line of pull and forearm-to-cable angle are results, not inputs. The presets were read off the earlier bar-driven
   model (line to the pulley, forearms on the cable), within ~1 cm. Faults (PULLDOWN_FAULTS) add joint deltas, so they
   work on every variation.
+- Lifter from the posture check (Tony, 2026-10-10): `pulldownBodyFromSkeleton(calibrateSkeleton(captures))` gives
+  `profile.body` (bone lengths per side, trunk, widths); the joint keyframes then move that person's skeleton.
 - Forearms on the line of pull in the FRONT view too, over the bottom 80% of the pull (Tony, 2026-10-09): check
   forearms_on_line_front. Grip formula in `grip.ts` (best fit: hands under the middle of the elbow's sideways swing;
   2.2x on the synthetic lifter); with a skeleton, analyzePulldown reports recommendedGrip and grip_vs_recommended.
