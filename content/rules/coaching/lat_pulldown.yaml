@@ -17,7 +17,6 @@ feel:
   # Tony's Tier 1 form-check decisions.
   muscles:
     - id: lats_teres_major
-      region: lats
       label: Lats and teres major
       where: Sides of your back, from the armpit down toward the waist
       role: target
@@ -25,21 +24,18 @@ feel:
         - Think of pulling your elbows down into your back pockets, not pulling the bar with your hands.
         - Let the bar pull your arms fully up at the top so the lats start each rep stretched.
     - id: biceps_forearms
-      region: arms
       label: Biceps and forearms
       where: Front of the upper arm and the forearm
       role: target
       lowCues:
         - Let the elbows bend fully as the bar comes down to your chest.
     - id: rhomboids
-      region: rhomboids
       label: Rhomboids
       where: Between your shoulder blades and your spine
       role: target
       lowCues:
         - At the bottom, draw the shoulder blades slightly together as well as down.
     - id: posterior_deltoid
-      region: rear_delts
       label: Rear shoulders
       where: Back of the shoulder, behind the armpit
       role: target
@@ -47,7 +43,6 @@ feel:
         - Drive the elbows down and slightly back toward your sides.
     # Not on Tony's list; kept as a check for shrugging. Remove if not wanted.
     - id: upper_traps_neck
-      region: upper_traps
       label: Top of the shoulders and neck
       where: Between the neck and the shoulder
       role: watch

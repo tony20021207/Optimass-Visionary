@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { Button } from "@optimass/ui";
 import type { Cue, CueKind } from "@optimass/diagnostics";
-import { ActionBar } from "./FeedbackStep";
+import { ActionBar } from "./controls";
 import type { SetRecord } from "./SetSession";
 
 /** How many cues to lead with. The rest sit under "All cues". */

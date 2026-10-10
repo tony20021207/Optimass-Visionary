@@ -21,7 +21,7 @@ export function boxToFrame(px: number, py: number, boxW: number, boxH: number, f
   const f = fit(boxW, boxH, frameW, frameH);
   const x = (px - f.left) / f.width;
   const y = (py - f.top) / f.height;
-  if (x < 0 || x > 1 || y < 0 || y > 1) return null;
+  if (!(x >= 0 && x <= 1 && y >= 0 && y <= 1)) return null; // also rejects NaN from an unmeasured box
   return { x, y };
 }
 

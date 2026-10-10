@@ -21,4 +21,8 @@ describe("video letterbox mapping", () => {
     expect(back.x).toBeCloseTo(0.2);
     expect(back.y).toBeCloseTo(0.9);
   });
+
+  it("returns null before the player has a size", () => {
+    expect(boxToFrame(0, 0, 0, 0, 0, 0)).toBeNull();
+  });
 });

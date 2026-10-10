@@ -1,54 +1,50 @@
 "use client";
 
 import { useState } from "react";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Button, cn } from "@optimass/ui";
 import type { CoachingTable, SetFeedback } from "@optimass/diagnostics";
-import { BodyMap } from "./BodyMap";
-import type { BodyRegion } from "./BodyMap";
+import { ActionBar, Chip } from "./controls";
 import { DiscomfortMarker } from "./DiscomfortMarker";
 import type { DiscomfortNote } from "./DiscomfortMarker";
+import { MuscleMarker } from "./MuscleMarker";
+import type { MuscleMark } from "./MuscleMarker";
+import type { RepClip } from "./RepVideo";
 
-const QUESTIONS = ["Where did you feel it?", "How strongly?", "Any pain or discomfort?"] as const;
-
-/** Starting point of each slider; the lifter moves it. */
-const DEFAULT_RATING = 5;
+const QUESTIONS = ["Where did you feel it working?", "Any pain or discomfort?"] as const;
 
 export function FeedbackStep({
   setNumber,
   videoUrl,
+  rep,
+  repCount,
   coaching,
   onBack,
   onSubmit,
 }: {
   setNumber: number;
   videoUrl: string;
+  /** The rep closest to good form, or null to review the whole set. */
+  rep: RepClip | null;
+  repCount: number;
   coaching: CoachingTable;
   onBack: () => void;
   onSubmit: (feedback: SetFeedback) => void;
 }) {
   const muscles = coaching.feel.muscles;
   const [question, setQuestion] = useState(0);
-  const [felt, setFelt] = useState<ReadonlySet<string>>(new Set());
-  const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [marks, setMarks] = useState<Record<string, MuscleMark>>({});
   const [hadDiscomfort, setHadDiscomfort] = useState<boolean | null>(null);
   const [notes, setNotes] = useState<DiscomfortNote[]>([]);
-
-  const toggle = (id: string) =>
-    setFelt((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  const feltMuscles = muscles.filter((m) => felt.has(m.id));
-  const activeRegions = new Set(feltMuscles.flatMap((m) => (m.region ? [m.region] : [])));
-  const regions = new Set(muscles.flatMap((m) => (m.region ? [m.region] : [])));
+  const [wholeSetForPain, setWholeSetForPain] = useState(false);
 
   const submit = () =>
     onSubmit({
+      rep: rep ?? undefined,
       muscles: Object.fromEntries(
-        muscles.map((m) => [m.id, felt.has(m.id) ? { felt: true, rating: ratings[m.id] ?? DEFAULT_RATING } : { felt: false }]),
+        muscles.map((m) => {
+          const mark = marks[m.id];
+          return [m.id, mark ? { felt: true, rating: mark.rating, timeSec: mark.timeSec, point: mark.point } : { felt: false }];
+        }),
       ),
       discomfort: notes.map((n) => ({ id: n.id, timeSec: n.timeSec, point: n.point, areaId: n.areaId, note: n.note })),
     });
@@ -73,60 +69,20 @@ export function FeedbackStep({
 
       {question === 0 && (
         <div className="space-y-3">
-          <p className="text-sm text-ink-muted">Tap every area where you felt the muscles working. Leave the rest.</p>
-          <BodyMap
-            active={activeRegions}
-            available={regions}
-            onToggle={(region: BodyRegion) => muscles.filter((m) => m.region === region).forEach((m) => toggle(m.id))}
-          />
-          <div className="flex flex-wrap gap-2">
-            {muscles.map((m) => (
-              <Chip key={m.id} on={felt.has(m.id)} onClick={() => toggle(m.id)} aria-label={m.label}>
-                {m.label}
-                <span className="block text-[11px] font-normal opacity-80">{m.where}</span>
-              </Chip>
-            ))}
-          </div>
+          <p className="text-sm text-ink-muted">
+            {rep ? (
+              <>
+                This is rep {rep.repIndex + 1} of {repCount}, your closest to good form. It plays on a loop.{" "}
+              </>
+            ) : null}
+            Pause where you felt a muscle working, press <span className="font-medium text-ink">Mark a muscle</span>, tap the spot on your
+            body, then say which muscle and how strongly. Leave out anything you didn&apos;t feel.
+          </p>
+          <MuscleMarker videoUrl={videoUrl} rep={rep} muscles={muscles} marks={marks} onChange={setMarks} />
         </div>
       )}
 
-      {question === 1 &&
-        (feltMuscles.length === 0 ? (
-          <p className="text-sm text-ink-muted">You didn&apos;t mark any areas, so there&apos;s nothing to rate. Go back to add some, or carry on.</p>
-        ) : (
-          <ul className="space-y-5">
-            {feltMuscles.map((m) => {
-              const value = ratings[m.id] ?? DEFAULT_RATING;
-              return (
-                <li key={m.id}>
-                  <div className="flex items-baseline justify-between">
-                    <label htmlFor={`rate-${m.id}`} className="text-sm font-medium text-ink">
-                      {m.label}
-                    </label>
-                    <span className="text-lg font-semibold tabular-nums text-brand-700">{value}</span>
-                  </div>
-                  <input
-                    id={`rate-${m.id}`}
-                    type="range"
-                    min={1}
-                    max={10}
-                    step={1}
-                    value={value}
-                    aria-label={`How strongly did you feel ${m.label}?`}
-                    onChange={(e) => setRatings((r) => ({ ...r, [m.id]: Number(e.target.value) }))}
-                    className="mt-1 h-8 w-full accent-brand-600"
-                  />
-                  <div className="flex justify-between text-[11px] text-ink-muted">
-                    <span>1 · barely</span>
-                    <span>10 · very strongly</span>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        ))}
-
-      {question === 2 && (
+      {question === 1 && (
         <div className="space-y-3">
           <div className="flex gap-2" role="group" aria-label="Any pain or discomfort?">
             <Chip on={hadDiscomfort === true} onClick={() => setHadDiscomfort(true)}>
@@ -142,7 +98,26 @@ export function FeedbackStep({
               No
             </Chip>
           </div>
-          {hadDiscomfort && <DiscomfortMarker videoUrl={videoUrl} areas={coaching.discomfort.areas} notes={notes} onChange={setNotes} />}
+          {hadDiscomfort && (
+            <>
+              <p className="text-sm text-ink-muted">
+                {rep && !wholeSetForPain ? "Same rep as before. " : ""}Pause where it hurt, press{" "}
+                <span className="font-medium text-ink">Mark where it hurt</span>, tap the spot, then tell us how it felt.
+              </p>
+              {rep && (
+                <button type="button" className="text-sm font-medium text-brand-700 underline" onClick={() => setWholeSetForPain((w) => !w)}>
+                  {wholeSetForPain ? `Back to rep ${rep.repIndex + 1}` : "It happened on a different rep"}
+                </button>
+              )}
+              <DiscomfortMarker
+                videoUrl={videoUrl}
+                rep={wholeSetForPain ? null : rep}
+                areas={coaching.discomfort.areas}
+                notes={notes}
+                onChange={setNotes}
+              />
+            </>
+          )}
         </div>
       )}
 
@@ -155,29 +130,5 @@ export function FeedbackStep({
         </Button>
       </ActionBar>
     </section>
-  );
-}
-
-/** Primary actions pinned to the bottom of the screen on phones, inline on wider screens. */
-export function ActionBar({ children }: { children: ReactNode }) {
-  return (
-    <div className="sticky bottom-0 -mx-4 flex gap-2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0">
-      {children}
-    </div>
-  );
-}
-
-export function Chip({ on, className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { on: boolean }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      className={cn(
-        "min-h-11 rounded-xl border px-3 py-2 text-left text-sm font-medium focus-visible:outline-2 focus-visible:outline-brand-500",
-        on ? "border-brand-600 bg-brand-600 text-white" : "border-border bg-surface text-ink hover:bg-surface-muted",
-        className,
-      )}
-      {...props}
-    />
   );
 }

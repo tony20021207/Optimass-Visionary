@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@optimass/ui";
-import { ActionBar } from "./FeedbackStep";
+import { ActionBar } from "./controls";
 
 /** Matches packages/kinematics capture-protocol.json (decided by Tony 2026-10-09). */
 const FILMING_TIPS = [
@@ -17,6 +17,7 @@ export function FilmStep({
   video,
   onVideo,
   onSample,
+  onDuration,
   onNext,
   onSkipFeedback,
 }: {
@@ -24,6 +25,8 @@ export function FilmStep({
   video: { url: string; name: string } | null;
   onVideo: (file: File | null) => void;
   onSample?: () => void;
+  /** Video length once known; used to cut the set into reps. */
+  onDuration: (durationSec: number) => void;
   onNext: () => void;
   onSkipFeedback: () => void;
 }) {
@@ -46,7 +49,14 @@ export function FilmStep({
       </details>
 
       {video ? (
-        <video src={video.url} controls playsInline className="max-h-[55vh] w-full rounded-card bg-black" aria-label={`Set ${setNumber} video`} />
+        <video
+          src={video.url}
+          controls
+          playsInline
+          onLoadedMetadata={(e) => onDuration(e.currentTarget.duration)}
+          className="max-h-[55vh] w-full rounded-card bg-black"
+          aria-label={`Set ${setNumber} video`}
+        />
       ) : null}
 
       <label className="flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-card border-2 border-dashed border-brand-500 bg-brand-50 px-4 py-4 text-sm font-semibold text-brand-700 focus-within:outline-2 focus-within:outline-brand-500">

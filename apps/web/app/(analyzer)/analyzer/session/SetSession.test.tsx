@@ -37,16 +37,22 @@ describe("set session", () => {
     filmSet();
     fireEvent.click(screen.getByRole("button", { name: /how did it feel/i }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Lats and teres major" }));
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    // Question 1: mark a working muscle on the video, then rate it.
+    fireEvent.click(screen.getByRole("button", { name: "Mark a muscle" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tap where you felt it working" }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Which muscle was that?" })).getByRole("button", { name: "Lats and teres major" }));
     fireEvent.change(screen.getByRole("slider", { name: "How strongly did you feel Lats and teres major?" }), { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(screen.getByText("· 2/10")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    // Question 2: discomfort.
     fireEvent.click(within(screen.getByRole("group", { name: "Any pain or discomfort?" })).getByRole("button", { name: "No" }));
     fireEvent.click(screen.getByRole("button", { name: /see my cues/i }));
 
     expect(screen.getByText("Set 1: your feedback")).toBeTruthy();
     expect(screen.getByText("Arms don't reach full overhead extension at the top of the rep")).toBeTruthy();
-    // Not marking an area counts as not feeling it.
+    // Not marking a muscle counts as not feeling it.
     expect(screen.getAllByText(/You didn't feel rhomboids/).length).toBeGreaterThan(0);
     expect(screen.getByText(coaching.feel.muscles[0]!.lowCues[0]!)).toBeTruthy();
     expect(screen.getAllByText(/You rated lats and teres major 2\/10/).length).toBeGreaterThan(0);

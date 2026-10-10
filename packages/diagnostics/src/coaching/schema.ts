@@ -18,8 +18,6 @@ export const CoachingTable = z.object({
           label: z.string().min(1),
           where: z.string().min(1),
           role: z.enum(["target", "watch"]),
-          /** Which drawn area of the body map lights up for this muscle (see the set session UI). */
-          region: z.enum(["lats", "rhomboids", "rear_delts", "arms", "upper_traps"]).optional(),
           lowCues: Cues,
           highCues: Cues,
         }),
@@ -35,17 +33,32 @@ export const CoachingTable = z.object({
 });
 export type CoachingTable = z.infer<typeof CoachingTable>;
 
-/** What the lifter tells us after a set (questions 1-3). */
+/** Where on a paused frame the lifter pointed, as 0..1 fractions of the video frame's width and height. */
+const FramePoint = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
+
+/** What the lifter tells us after a set: muscles they felt working, then any discomfort, both marked on one rep. */
 export const SetFeedback = z.object({
-  muscles: z.record(Slug, z.object({ felt: z.boolean(), rating: Rating.optional() })).default({}),
+  /** The rep the lifter reviewed (the one closest to good form), in seconds into the set video. */
+  rep: z.object({ repIndex: z.number().int().nonnegative(), startSec: z.number().nonnegative(), endSec: z.number().nonnegative() }).optional(),
+  muscles: z
+    .record(
+      Slug,
+      z.object({
+        felt: z.boolean(),
+        rating: Rating.optional(),
+        /** Where they tapped on the video for this muscle, and when. */
+        timeSec: z.number().nonnegative().optional(),
+        point: FramePoint.optional(),
+      }),
+    )
+    .default({}),
   discomfort: z
     .array(
       z.object({
         id: z.string().min(1),
         /** Seconds into the set video. */
         timeSec: z.number().nonnegative(),
-        /** Where on the paused frame the lifter pointed, as 0..1 fractions of width and height. */
-        point: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }).optional(),
+        point: FramePoint.optional(),
         areaId: Slug.optional(),
         note: z.string().default(""),
       }),

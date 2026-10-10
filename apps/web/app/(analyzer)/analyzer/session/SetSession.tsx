@@ -5,6 +5,7 @@ import { Button, Card } from "@optimass/ui";
 import { coachSet } from "@optimass/diagnostics";
 import type { CoachingTable, SetCoaching, SetFeedback, Tier2Rules } from "@optimass/diagnostics";
 import { analyzeSetDemo } from "./demo-analysis";
+import type { SetAnalysis } from "./demo-analysis";
 import { FilmStep } from "./FilmStep";
 import { FeedbackStep } from "./FeedbackStep";
 import { ReviewStep } from "./ReviewStep";
@@ -35,7 +36,8 @@ export function SetSession({
 }) {
   const [sets, setSets] = useState<SetRecord[]>([]);
   const [step, setStep] = useState<Step>("film");
-  const [video, setVideo] = useState<{ url: string; name: string } | null>(null);
+  const [video, setVideo] = useState<{ url: string; name: string; durationSec?: number } | null>(null);
+  const [analysis, setAnalysis] = useState<SetAnalysis | null>(null);
 
   // Object URLs keep each video in memory; release them all when the page goes away.
   const objectUrls = useRef<string[]>([]);
@@ -45,10 +47,11 @@ export function SetSession({
 
   const finishSet = (feedback?: SetFeedback) => {
     if (!video) return;
-    const findings = analyzeSetDemo(sets.length);
+    const { findings } = analysis ?? analyzeSetDemo(sets.length, video.durationSec);
     const result = coachSet({ findings, feedback: feedback ?? {}, coaching, tier2 });
     setSets((prev) => [...prev, { videoUrl: video.url, fileName: video.name, feedback, coaching: result }]);
     setVideo(null);
+    setAnalysis(null);
     setStep("review");
   };
 
@@ -74,12 +77,24 @@ export function SetSession({
             setVideo({ url, name: file.name });
           }}
           onSample={sampleVideoUrl ? () => setVideo({ url: sampleVideoUrl, name: "sample" }) : undefined}
-          onNext={() => setStep("feedback")}
+          onDuration={(durationSec) => setVideo((v) => (v ? { ...v, durationSec } : v))}
+          onNext={() => {
+            setAnalysis(analyzeSetDemo(sets.length, video?.durationSec));
+            setStep("feedback");
+          }}
           onSkipFeedback={() => finishSet()}
         />
       )}
-      {step === "feedback" && video && (
-        <FeedbackStep setNumber={setNumber} videoUrl={video.url} coaching={coaching} onBack={() => setStep("film")} onSubmit={finishSet} />
+      {step === "feedback" && video && analysis && (
+        <FeedbackStep
+          setNumber={setNumber}
+          videoUrl={video.url}
+          rep={analysis.reviewRep}
+          repCount={analysis.repCount}
+          coaching={coaching}
+          onBack={() => setStep("film")}
+          onSubmit={finishSet}
+        />
       )}
       {step === "review" && sets.length > 0 && (
         <ReviewStep
