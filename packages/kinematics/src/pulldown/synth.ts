@@ -173,11 +173,10 @@ export type PulldownVariant = keyof typeof PULLDOWN_VARIANTS;
  */
 export const PULLDOWN_SETUPS = {
   wide_overhand: GOOD_PULLDOWN,
-  // Tony (2026-10-09): forearms stay on the cable the whole way, the bar stops short of the chest. That works for close
-  // grips when the line of pull tilts forward (16°) toward a pulley over or past the knees: forearms stay within ~13° of
-  // the cable from the side and the front, the bar stops near collarbone height, elbows at the trunk line. Grip, trunk
-  // and tempo come from Tony's underhand clip (one lifter, 2 reps, MediaPipe); its lifter broke the forearm off the
-  // cable early instead.
+  // Tony's Motion Lab settings (2026-10-10): forearms on the cable from the side and straight down from the front (no
+  // sideways tilt allowed); the pull stops where the forearm would leave the cable, so the bar finishes around chin to
+  // nose height. Elbows 2.5° behind the trunk line is the target, trunk 6° back with 7° swing, 1 s up / 2 s down, 0.2 s
+  // pauses. Grip and top elbow bend came from Tony's underhand clip (one lifter, 2 reps, MediaPipe).
   narrow_underhand: {
     ...GOOD_PULLDOWN,
     gripType: "underhand",
@@ -185,17 +184,17 @@ export const PULLDOWN_SETUPS = {
     // Elbows bend forward, not out: forearms straight down from the front for the whole pull (Tony, 2026-10-10).
     elbowsForward: 1,
     forearmOnLine: true,
-    forearmFrontTiltFreeDeg: 3,
+    forearmFrontTiltFreeDeg: 0,
     bottomArmElevationDeg: 0,
-    bottomHumerusBehindDeg: -5,
+    bottomHumerusBehindDeg: 2.5,
     topElbowFlexionDeg: 18,
     lineAheadOfShouldersM: 0.27,
-    trunkLeanDeg: 15,
-    trunkSwingDeg: 9.5,
-    concentricS: 1.8,
-    eccentricS: 3,
-    bottomPauseS: 1,
-    topPauseS: 0.5,
+    trunkLeanDeg: 6,
+    trunkSwingDeg: 7,
+    concentricS: 1,
+    eccentricS: 2,
+    bottomPauseS: 0.2,
+    topPauseS: 0.2,
   },
   neutral_bar: {
     ...GOOD_PULLDOWN,

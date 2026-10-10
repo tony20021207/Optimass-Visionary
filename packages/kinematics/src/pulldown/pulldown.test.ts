@@ -185,7 +185,7 @@ describe("pulldown variations", () => {
     const report = analyzePulldown(synthesizePulldown(pulldownProfileFor(setup), { camera: at(135) }));
     expect(report.reps).toHaveLength(3);
     // Close grips stop short of the chest to keep the forearm on the cable (Tony, 2026-10-09).
-    for (const r of report.reps) expect(Math.abs(r.features.bar_bottom_rel_shoulder_m!)).toBeLessThan(setup === "wide_overhand" ? 0.12 : 0.2);
+    for (const r of report.reps) expect(Math.abs(r.features.bar_bottom_rel_shoulder_m!)).toBeLessThan(setup === "wide_overhand" ? 0.12 : 0.25);
   });
 
   it("close grips pull with more shoulder extension than the wide overhand grip", () => {
