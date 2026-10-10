@@ -38,8 +38,10 @@ export interface PulldownJoints {
    */
   armAngleDeg: number[];
   /**
-   * Which way the elbow points around the shoulder-to-hand line: 0 = straight out to the side, +90 = in front of that
-   * line (forward when the arms are overhead, under it once the hands are in front), −90 = the other way.
+   * Shoulder rotation, read from which way the elbow points around the shoulder-to-hand line (hands fixed on the bar,
+   * so this swing is humeral rotation; Tony, 2026-10-10): 0 = straight out to the side (more internal rotation),
+   * +90 = in front of that line (forward when the arms are overhead, under it once the hands are in front; more
+   * external), −90 = the other way.
    */
   elbowDirectionDeg: number[];
 }
