@@ -10,9 +10,9 @@ export type JointRegion = "trunk" | "neck" | "scapula" | "shoulder" | "elbow" | 
 
 export interface JointMotion {
   region: JointRegion;
-  /** What + and − mean, in clinical words. */
+  /** What + and − mean, in clinical words. No `negative` for a motion that is never below 0 (elevation). */
   positive: string;
-  negative: string;
+  negative?: string;
   unit: "deg" | "m";
   displayRange: readonly [number, number];
   /** How it's defined here, where that isn't obvious from the name. */
@@ -62,13 +62,30 @@ export const JOINT_MOTIONS = {
     displayRange: [-60, 180],
     note: "Humerus vs thorax in the sagittal plane: 0 = arm at the side, 90 = forward, 180 = overhead.",
   },
+  shoulder_elevation: {
+    region: "shoulder",
+    positive: "elevation",
+    unit: "deg",
+    displayRange: [0, 180],
+    note:
+      "Humerothoracic elevation, whatever the plane: 0 = arm at the side, 90 = horizontal, 180 = overhead. With the plane " +
+      "of elevation it places the arm without the blind spot of flexion + abduction (a horizontal arm reads 90° in both).",
+  },
+  shoulder_plane_of_elevation: {
+    region: "shoulder",
+    positive: "plane of elevation, toward the front",
+    negative: "behind the frontal plane",
+    unit: "deg",
+    displayRange: [-45, 150],
+    note: "The vertical plane the arm is raised in (ISB): 0 = straight out to the side (abduction plane), 90 = straight forward (flexion plane), negative = behind the frontal plane.",
+  },
   shoulder_abduction: {
     region: "shoulder",
     positive: "abduction",
     negative: "adduction",
     unit: "deg",
-    displayRange: [-30, 120],
-    note: "Humerus out of the sagittal plane, toward the side: 0 = in the sagittal plane.",
+    displayRange: [-30, 180],
+    note: "Humerus vs thorax in the frontal plane: 0 = arm at the side, 90 = out to the side, 180 = overhead.",
   },
   shoulder_external_rotation: {
     region: "shoulder",
@@ -98,5 +115,6 @@ export type JointMotionId = keyof typeof JOINT_MOTIONS;
 export function jointMotionLabel(id: JointMotionId): string {
   const m: JointMotion = JOINT_MOTIONS[id];
   const region = m.region.charAt(0).toUpperCase() + m.region.slice(1);
-  return `${region} ${m.positive} (+) / ${m.negative} (−)${m.unit === "m" ? ", m" : ", °"}`;
+  const sides = m.negative ? `${m.positive} (+) / ${m.negative} (−)` : m.positive;
+  return `${region} ${sides}${m.unit === "m" ? ", m" : ", °"}`;
 }

@@ -172,7 +172,7 @@ describe("placeholder parameters vs synthetic reps", () => {
   it("follows a profile edited in place (Motion Lab sliders)", () => {
     const profile = { ...PULLDOWN_VARIANTS.good, joints: { ...PULLDOWN_VARIANTS.good.joints } };
     const before = poseAt(1, profile).left_wrist.y;
-    profile.joints.shoulder_flexion = profile.joints.shoulder_flexion.map((x, i) => (i === 3 ? x + 20 : x));
+    profile.joints.shoulder_elevation = profile.joints.shoulder_elevation.map((x, i) => (i === 3 ? x + 20 : x));
     expect(poseAt(1, profile).left_wrist.y).not.toBeCloseTo(before, 3);
   });
 
@@ -201,10 +201,10 @@ describe("pulldown variations", () => {
     expect(share("narrow_underhand")).toBeGreaterThan(share("wide_overhand") + 0.4);
   });
 
-  it("shoulder adduction keyframes bring the arms down on any grip", () => {
-    const elevation = (abductionDeg: number) => {
+  it("shoulder elevation keyframes bring the arms down on any grip", () => {
+    const elevation = (elevationDeg: number) => {
       const p = pulldownProfileFor("neutral_bar");
-      const joints = { ...p.joints, shoulder_abduction: p.joints.shoulder_abduction.map((x, i) => (i === 3 ? abductionDeg : x)) };
+      const joints = { ...p.joints, shoulder_elevation: p.joints.shoulder_elevation.map((x, i) => (i === 3 ? elevationDeg : x)) };
       const reps = analyzePulldown(synthesizePulldown({ ...p, joints, noiseM: 0 })).reps;
       return reps.reduce((s, r) => s + r.features.humerothoracic_elevation_bottom_deg!, 0) / reps.length;
     };

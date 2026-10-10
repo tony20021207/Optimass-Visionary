@@ -34,9 +34,12 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
 - Rep phases (Tony, 2026-10-10): near single-joint lifts like the pulldown use 3 phases of equal duration; complex lifts
   (deadlift) get custom break points per exercise. Pulldown: `PULLDOWN_PHASES` (same shape as Tier 2's `phases` in
   content/rules/coaching/lat_pulldown.yaml; that file should become the one source once both PRs merge).
+- Shoulder in the simulation (Tony, 2026-10-10): elevation (0 = arm at the side, 180 = overhead) + plane of elevation
+  (ISB: 0 = out to the side, 90 = forward), not flexion + abduction angles, which can't place a horizontal arm pointing
+  between forward and sideways. Measured frontal abduction and sagittal flexion are readouts.
 - Pulldown joint keyframes: each variation sets catalogue joints at PULLDOWN_KEY_AT (top and each phase end: time
   thirds, i.e. 0, 0.25, 0.75, 1 of bar travel on the eased pull), joined by a monotone cubic. Pulley and tempo are shared. Closed chain: shoulder rotation is solved so the hand
-  sits on the bar at the grip width (followed continuously from the top), and abduction opens or closes only when no
+  sits on the bar at the grip width (followed continuously from the top), and the plane of elevation shifts only when no
   rotation reaches the bar (pulldownArmOnBar). Presets were fitted to the earlier model (hand within ~6 cm, same check results). Faults
   (PULLDOWN_FAULTS) add joint deltas, so they work on every variation.
 - Lifter from the posture check (Tony, 2026-10-10): `pulldownBodyFromSkeleton(calibrateSkeleton(captures))` gives
