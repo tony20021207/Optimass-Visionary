@@ -57,6 +57,9 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
   (sticking point / hitch on the bar's room height; check smooth_pull, fault uneven_pacing) and set-level
   `tempo_variation_pct` (CV of pull/return times, addSetFeatures; check tempo_consistent, NaN = info for 1 rep). Faults
   sticking_point and inconsistent_tempo (`tempoDrift`: later reps slower).
+- Shoulder rotation is closed chain (set by the bar), so it isn't a keyframe. `planeForShoulderRotation(p, k, deg)` solves
+  keyframe k's plane of elevation for a wanted rotation, hand kept on the bar (elbows out = more internal rotation;
+  Tony, 2026-10-10). Motion Lab's rotation slider uses it.
 - Anatomical end ranges (Tony, 2026-10-10): `src/joints/end-ranges.json` (PLACEHOLDER, Tony to set) gives each joint
   motion's stop in its − and + direction; `jointsAt` clamps to it (scapular upward rotation: the rhythm + deviation total,
   in shoulderAt) and Motion Lab's joint sliders stop there. Because anatomy caps one side, checks only bound the side a

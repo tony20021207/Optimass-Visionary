@@ -10,6 +10,8 @@ import {
   evaluatePulldownRep,
   elbowFlexionHoldingForearm,
   jointsAt,
+  planeForShoulderRotation,
+  pulldownArmOnBar,
   PULLDOWN_JOINT_NAMES,
   PULLDOWN_KEY_AT,
   pulldownForearmToCableDeg,
@@ -410,5 +412,18 @@ describe("grip from arm lengths", () => {
         const [lo, hi] = jointLimits(name as keyof typeof JOINT_MOTIONS);
         for (const x of keys) expect(x >= lo && x <= hi).toBe(true);
       }
+  });
+
+  it("internally rotates the shoulder by flaring the elbow out, hand kept on the bar (Tony, 2026-10-10)", () => {
+    const p = { ...pulldownProfileFor("neutral_bar"), noiseM: 0 };
+    const k = 2;
+    const at = PULLDOWN_KEY_AT[k]!;
+    const now = pulldownArmOnBar(p, at);
+    const plane = planeForShoulderRotation(p, k, now.shoulderRotationDeg - 10)!;
+    expect(plane).toBeLessThan(now.shoulderPlaneOfElevationDeg - 2);
+    const q = { ...p, joints: { ...p.joints, shoulder_plane_of_elevation: p.joints.shoulder_plane_of_elevation.map((x, i) => (i === k ? plane : x)) } };
+    expect(pulldownArmOnBar(q, at).shoulderRotationDeg).toBeCloseTo(now.shoulderRotationDeg - 10, 0);
+    const b = poseAt(at, q);
+    expect(Math.abs(b.left_wrist.x - b.right_wrist.x) / 0.4).toBeCloseTo(p.gripWidthXShoulder, 2);
   });
 });
