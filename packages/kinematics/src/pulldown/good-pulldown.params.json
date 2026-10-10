@@ -197,6 +197,12 @@
       "pull_along_line": { "min": 2, "max": 9, "why": "PLACEHOLDER set just past Tony's narrow underhand baseline (2026-10-10) over 4 camera angles and 3 noise seeds: the close grip pulls straighter down (~4.5-6° off vertical)." },
       "forearms_on_line_front": { "max": 21, "why": "PLACEHOLDER set just past Tony's narrow underhand baseline (2026-10-10) over 4 camera angles and 3 noise seeds (up to ~19°, from the elbows swinging out over the last ~15% of the pull; open question to Tony)." },
       "no_yank": { "max": 9, "why": "PLACEHOLDER set just past Tony's narrow underhand baseline (2026-10-10) over 4 camera angles and 3 noise seeds (good rep up to ~7.7 m/s²; momentum swing ~12, yank ~15)." }
+    },
+    "neutral_bar": {
+      "full_stretch_at_top": { "max": 19, "why": "PLACEHOLDER set just past Tony's neutral bar baseline (2026-10-10, ~18:20Z) over 5 camera angles and 3 noise seeds (top elbow bend 16.9°, read up to ~18°)." },
+      "elbows_reach_trunk_line": { "min": -15, "why": "PLACEHOLDER set just past Tony's neutral bar baseline (2026-10-10): with the forearms on the cable the elbows stop ~12-14° in front of the trunk line. A partial pull (~-32°) still fails." },
+      "pull_along_line": { "min": 6, "max": 12, "why": "PLACEHOLDER set around Tony's neutral bar baseline (2026-10-10): the bar comes down ~8-10° off vertical; elbows drifting forward (~19°) still fails." },
+      "no_yank": { "max": 8, "why": "PLACEHOLDER set just past Tony's neutral bar baseline (2026-10-10) with his pacing on (good rep up to ~7.2 m/s²; yank ~10.4-11.5)." }
     }
   }
 }

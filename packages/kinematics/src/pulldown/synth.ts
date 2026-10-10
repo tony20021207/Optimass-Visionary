@@ -301,20 +301,25 @@ export const PULLDOWN_SETUPS = {
       elbow_flexion: [15.6, 72.6, 111, 134.5],
     },
   },
-  // Forearms on the cable; the bar stops around the collarbone where the forearm would leave it.
+  // Tony's Motion Lab baseline (2026-10-10, pasted ~18:20Z): forearms on the cable, trunk 5° back at the top leaning to
+  // 15° at the bottom, plane closing from 67.5° to 37° (elbows drifting out late), elbow 16.9° bent at the top to 131.1°
+  // at the bottom, no scapular rotation beyond the rhythm, pacing on (placeholder shares), 0.15 s bottom / 0.2 s top pause.
   neutral_bar: {
     ...GOOD_PULLDOWN,
     gripType: "neutral",
     attachment: "neutral_bar",
     gripWidthXShoulder: 1.5,
+    bottomPauseS: 0.15,
+    topPauseS: 0.2,
+    pacing: { concentric: [0.3, 0.4, 0.3], eccentric: [0.25, 0.4, 0.35] },
     joints: {
-      trunk_flexion: [-8, -12.5, -21.5, -26],
+      trunk_flexion: [-5, -11, -13, -15],
       scapular_elevation: [0.03, 0.017, -0.008, -0.02],
       scapular_protraction: [0, -0.004, -0.011, -0.015],
       scapular_upward_rotation: [0, 0, 0, 0],
       shoulder_elevation: [142.3, 104.9, 52.6, 23.9],
-      shoulder_plane_of_elevation: [67.5, 57.3, 57.3, 63.1],
-      elbow_flexion: [11, 68.1, 105.1, 113.8],
+      shoulder_plane_of_elevation: [67.5, 63.5, 57.3, 37],
+      elbow_flexion: [16.9, 59.7, 110, 131.1],
     },
   },
 } satisfies Record<string, PulldownProfile>;
