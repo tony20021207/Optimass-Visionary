@@ -37,6 +37,9 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
 - Shoulder in the simulation (Tony, 2026-10-10): elevation (0 = arm at the side, 180 = overhead) + plane of elevation
   (ISB: 0 = out to the side, 90 = forward), not flexion + abduction angles, which can't place a horizontal arm pointing
   between forward and sideways. Measured frontal abduction and sagittal flexion are readouts.
+- Scapular rhythm (Tony, 2026-10-10): scapular upward rotation follows arm elevation per variation
+  (`profile.scapularRhythm`: glenohumeral:scapular ratio + onset; PLACEHOLDER 2:1 after 30°). The
+  `scapular_upward_rotation` keys are a deviation from it (0 = normal); each joint is still judged on its own.
 - Pulldown joint keyframes: each variation sets catalogue joints at PULLDOWN_KEY_AT (top and each phase end: time
   thirds, i.e. 0, 0.25, 0.75, 1 of bar travel on the eased pull), joined by a monotone cubic. Pulley and tempo are shared. Closed chain: shoulder rotation is solved so the hand
   sits on the bar at the grip width (followed continuously from the top), and the plane of elevation shifts only when no

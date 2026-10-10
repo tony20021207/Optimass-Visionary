@@ -50,6 +50,26 @@ export const PULLDOWN_JOINT_NAMES = [
 export type PulldownJointName = (typeof PULLDOWN_JOINT_NAMES)[number];
 export type PulldownJoints = Record<PulldownJointName, number[]>;
 
+/**
+ * Scapulohumeral rhythm (Tony, 2026-10-10): scapular upward rotation follows arm elevation, and the
+ * `scapular_upward_rotation` keyframes are a deviation from it (0 = normal rhythm). Set per exercise variation, since
+ * the plane of the pull, the load and a fixed bar all change it.
+ */
+export interface ScapularRhythm {
+  /** Glenohumeral degrees per degree of scapular upward rotation once the scapula joins in (e.g. 2 for 2:1). */
+  glenohumeralPerScapular: number;
+  /** Arm elevation (deg) before which the scapula doesn't upwardly rotate. */
+  onsetDeg: number;
+}
+
+/** PLACEHOLDER values (the textbook 2:1 after ~30°) until Tony sets each variation's rhythm. */
+export const DEFAULT_SCAPULAR_RHYTHM: ScapularRhythm = { glenohumeralPerScapular: 2, onsetDeg: 30 };
+
+/** Scapular upward rotation (deg from rest) the rhythm gives at an arm elevation. */
+export function rhythmUpwardRotationDeg(rhythm: ScapularRhythm, elevationDeg: number): number {
+  return Math.max(0, elevationDeg - rhythm.onsetDeg) / (1 + rhythm.glenohumeralPerScapular);
+}
+
 /** Joint-centre distances of the simulated lifter (m). Arms per side, so a left-right difference carries through. */
 export interface PulldownBody {
   /** Hip midpoint to shoulder midpoint. */
@@ -97,6 +117,8 @@ export interface PulldownProfile {
   yank: number;
   /** The lifter's bone lengths (pulldownBodyFromSkeleton); the default synthetic lifter when absent. */
   body?: PulldownBody;
+  /** How the scapula upwardly rotates with arm elevation for this variation; DEFAULT_SCAPULAR_RHYTHM when absent. */
+  scapularRhythm?: ScapularRhythm;
   /** Std. dev. of per-landmark jitter added to world coordinates, mimicking estimation noise. */
   noiseM: number;
   seed: number;
@@ -123,14 +145,15 @@ export const GOOD_PULLDOWN: PulldownProfile = {
     trunk_flexion: [-8, -12.5, -21.5, -26],
     scapular_elevation: [0.03, 0.017, -0.008, -0.02],
     scapular_protraction: [0, -0.004, -0.011, -0.015],
-    scapular_upward_rotation: [0, -5, -15, -20],
+    scapular_upward_rotation: [0, 0, 0, 0],
     shoulder_elevation: [139.8, 107.2, 65, 41.9],
-    shoulder_plane_of_elevation: [41.1, 29.8, 18.3, -7.5],
+    shoulder_plane_of_elevation: [36, 29.8, 18.3, -7.5],
     elbow_flexion: [11, 63.8, 103.8, 118.4],
   },
 
   gripType: "overhand",
   attachment: "straight_bar",
+  scapularRhythm: DEFAULT_SCAPULAR_RHYTHM,
   headForwardM: 0,
   rightArmLag: 0,
   yank: 0,
@@ -243,7 +266,7 @@ export const PULLDOWN_SETUPS = {
       trunk_flexion: [-6, -7.8, -11.2, -13],
       scapular_elevation: [0.03, 0.017, -0.008, -0.02],
       scapular_protraction: [0, -0.004, -0.011, -0.015],
-      scapular_upward_rotation: [0, -5, -15, -20],
+      scapular_upward_rotation: [0, 0, 0, 0],
       shoulder_elevation: [137.1, 112.9, 80.5, 65.2],
       shoulder_plane_of_elevation: [86.9, 85.4, 84.7, 83.4],
       elbow_flexion: [18, 53.2, 84.8, 94],
@@ -259,7 +282,7 @@ export const PULLDOWN_SETUPS = {
       trunk_flexion: [-8, -12.5, -21.5, -26],
       scapular_elevation: [0.03, 0.017, -0.008, -0.02],
       scapular_protraction: [0, -0.004, -0.011, -0.015],
-      scapular_upward_rotation: [0, -5, -15, -20],
+      scapular_upward_rotation: [0, 0, 0, 0],
       shoulder_elevation: [142.3, 104.9, 52.6, 23.9],
       shoulder_plane_of_elevation: [67.5, 57.3, 57.3, 63.1],
       elbow_flexion: [11, 68.1, 105.1, 113.8],
@@ -375,10 +398,11 @@ export function jointsAt(p: PulldownProfile, prog: number): Record<PulldownJoint
 // Body frame: x = toward the lifter's left, y = up, z = forward (the way the lifter faces). Origin at the hip midpoint.
 // The lifter sits with thighs horizontal under the knee pad.
 
+const rhythmOf = (p: PulldownProfile) => p.scapularRhythm ?? DEFAULT_SCAPULAR_RHYTHM;
 const gripHalfWidth = (p: PulldownProfile) => p.gripWidthXShoulder * bodyOf(p).shoulderHalfWidth;
 
 /** Shoulder joint to the scapula's rotation centre, sideways (m). Made-up anatomy for the synthetic lifter. */
-const SCAPULA_ROTATION_RADIUS = 0.1;
+const SCAPULA_ROTATION_RADIUS = 0.06;
 
 type JointValues = Record<PulldownJointName, number>;
 /** Trunk axes for a trunk flexion angle (− = leaning back): up along the trunk, and forward square to it. */
@@ -392,11 +416,12 @@ function trunkFrame(trunkFlexionDeg: number): { U: Vec3; F: Vec3 } {
  * Shoulder joint (glenohumeral centre) for side `s` (1 = left, −1 = right): trunk position plus scapular elevation,
  * protraction and upward rotation.
  */
-function shoulderAt(j: JointValues, s: 1 | -1, body: PulldownBody): Vec3 {
+function shoulderAt(j: JointValues, s: 1 | -1, body: PulldownBody, rhythm: ScapularRhythm): Vec3 {
   const L = v(1, 0, 0);
   const { U, F } = trunkFrame(j.trunk_flexion);
   const protraction = j.scapular_protraction;
-  const down = rad(-j.scapular_upward_rotation);
+  // Upward rotation from rest = the variation's rhythm at this arm elevation + the keyed deviation from it.
+  const down = rad(-(rhythmUpwardRotationDeg(rhythm, j.shoulder_elevation) + j.scapular_upward_rotation));
   const out = body.shoulderHalfWidth + 0.4 * protraction - SCAPULA_ROTATION_RADIUS * (1 - Math.cos(down));
   const up = j.scapular_elevation - SCAPULA_ROTATION_RADIUS * Math.sin(down);
   return add(add(add(scale(U, body.trunk), scale(U, up)), scale(F, protraction)), scale(L, s * out));
@@ -515,7 +540,7 @@ function armTrack(p: PulldownProfile, s: 1 | -1): ArmOnBar[] {
   const track: ArmOnBar[] = [];
   for (let i = 0; i <= TRACK_STEPS; i++) {
     const j = jointsAt(p, i / TRACK_STEPS);
-    track.push(armOnBar(shoulderAt(j, s, body), j, s, body, gripHalfWidth(p), track[i - 1]));
+    track.push(armOnBar(shoulderAt(j, s, body, rhythmOf(p)), j, s, body, gripHalfWidth(p), track[i - 1]));
   }
   trackCache.set(key, track);
   return track;
@@ -539,7 +564,7 @@ export function pulldownArmOnBar(p: PulldownProfile, prog: number, side: "left" 
   const j = jointsAt(p, prog);
   const jj = { ...j, shoulder_plane_of_elevation: j.shoulder_plane_of_elevation + guess.planeAdjustDeg };
   // Snap to the exact on-bar rotation nearest the tracked one.
-  const { roots } = rotationsOnBar(shoulderAt(jj, s, body), jj, s, body, gripHalfWidth(p));
+  const { roots } = rotationsOnBar(shoulderAt(jj, s, body, rhythmOf(p)), jj, s, body, gripHalfWidth(p));
   const rot = roots.length ? roots.reduce((r1, r2) => (Math.abs(wrapDeg(r2 - guess.rotationDeg)) < Math.abs(wrapDeg(r1 - guess.rotationDeg)) ? r2 : r1)) : guess.rotationDeg;
   return { shoulderRotationDeg: rot, shoulderPlaneOfElevationDeg: jj.shoulder_plane_of_elevation };
 }
@@ -559,7 +584,7 @@ export function poseAt(prog: number, p: PulldownProfile): Body {
     const armProg = side === "right" && p.rightArmLag ? prog * (1 - p.rightArmLag) : prog;
     // The trunk is shared: only the arm and girdle lag.
     const jArm = { ...jointsAt(p, armProg), trunk_flexion: j.trunk_flexion };
-    const shoulder = shoulderAt(jArm, s, body);
+    const shoulder = shoulderAt(jArm, s, body, rhythmOf(p));
     const [a, b] = armLengths(body, s);
     const onBar = pulldownArmOnBar(p, armProg, side);
     const { elbow, wrist } = armFromAngles(shoulder, { ...jArm, shoulder_plane_of_elevation: onBar.shoulderPlaneOfElevationDeg }, onBar.shoulderRotationDeg, s, a, b);
