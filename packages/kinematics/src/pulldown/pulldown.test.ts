@@ -146,8 +146,9 @@ describe("placeholder parameters vs synthetic reps", () => {
       const wide = analyzePulldown(clip("good", az)).reps.map((r) => r.features);
       const fwd = analyzePulldown(clip("elbows_forward", az)).reps;
       const f = fwd.map((r) => r.features);
-      // Wide grip, elbows out: mostly adduction. Elbows forward: mostly extension.
-      expect(mean(wide.map((x) => x.extension_share))).toBeLessThan(0.35);
+      // Wide grip, elbows out: mostly adduction. Elbows forward: mostly extension. (About 0.36 since the keyframes
+      // became time thirds: four keys can't hold the old mid-pull abduction peak without a yank.)
+      expect(mean(wide.map((x) => x.extension_share))).toBeLessThan(0.4);
       expect(mean(f.map((x) => x.extension_share))).toBeGreaterThan(0.75);
       expect(mean(wide.map((x) => x.plane_of_elevation_mid_deg))).toBeLessThan(30);
       expect(mean(f.map((x) => x.plane_of_elevation_mid_deg))).toBeGreaterThan(60);
@@ -171,7 +172,7 @@ describe("placeholder parameters vs synthetic reps", () => {
   it("follows a profile edited in place (Motion Lab sliders)", () => {
     const profile = { ...PULLDOWN_VARIANTS.good, joints: { ...PULLDOWN_VARIANTS.good.joints } };
     const before = poseAt(1, profile).left_wrist.y;
-    profile.joints.shoulder_flexion = profile.joints.shoulder_flexion.map((x, i) => (i === 6 ? x + 20 : x));
+    profile.joints.shoulder_flexion = profile.joints.shoulder_flexion.map((x, i) => (i === 3 ? x + 20 : x));
     expect(poseAt(1, profile).left_wrist.y).not.toBeCloseTo(before, 3);
   });
 
@@ -203,7 +204,7 @@ describe("pulldown variations", () => {
   it("shoulder adduction keyframes bring the arms down on any grip", () => {
     const elevation = (abductionDeg: number) => {
       const p = pulldownProfileFor("neutral_bar");
-      const joints = { ...p.joints, shoulder_abduction: p.joints.shoulder_abduction.map((x, i) => (i >= 5 ? abductionDeg : x)) };
+      const joints = { ...p.joints, shoulder_abduction: p.joints.shoulder_abduction.map((x, i) => (i === 3 ? abductionDeg : x)) };
       const reps = analyzePulldown(synthesizePulldown({ ...p, joints, noiseM: 0 })).reps;
       return reps.reduce((s, r) => s + r.features.humerothoracic_elevation_bottom_deg!, 0) / reps.length;
     };

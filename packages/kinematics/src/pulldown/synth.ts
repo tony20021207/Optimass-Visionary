@@ -13,10 +13,23 @@ export type PulldownGripType = "overhand" | "underhand" | "neutral";
 export type PulldownAttachment = "straight_bar" | "neutral_bar";
 
 /**
- * Where in the pull each joint keyframe sits: share of the way from the top (0, arms overhead) to the bottom (1).
- * Between keyframes each joint follows a smooth curve that never overshoots (monotone cubic).
+ * Where in the pull each joint keyframe sits, as bar progress (0 = top, arms overhead; 1 = bottom). Between keyframes
+ * each joint follows a smooth curve that never overshoots (monotone cubic).
+ *
+ * Phases (Tony, 2026-10-10): the pulldown is mostly one joint action (shoulder adduction and extension, the elbow a
+ * synergist), so three phases of equal duration; complex lifts such as the deadlift get their own break points.
+ * PULLDOWN_PHASES gives the break points as shares of the pull's duration, in the same shape as the `phases` list in
+ * content/rules/coaching/lat_pulldown.yaml (Tier 2, PR #3), which should become the one source once both are merged.
+ * The keyframes sit at those times on a smooth pull: time thirds of the eased pull are 0.25 and 0.75 of the bar's travel.
  */
-export const PULLDOWN_KEY_AT = [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1] as const;
+export const PULLDOWN_PHASES = [
+  { id: "top", label: "Top third", endsAt: 1 / 3 },
+  { id: "middle", label: "Middle third", endsAt: 2 / 3 },
+  { id: "bottom", label: "Bottom third", endsAt: 1 },
+] as const;
+/** Bar progress at a share of the pull's duration, on a smooth (not yanked) pull: see barProgressAt. */
+const progressAtTimeShare = (share: number) => (1 - Math.cos(Math.PI * share)) / 2;
+export const PULLDOWN_KEY_AT: readonly number[] = [0, ...PULLDOWN_PHASES.map((ph) => progressAtTimeShare(ph.endsAt))];
 
 /**
  * The pulldown's joint keyframes, in the shared clinical vocabulary (joints/catalogue.ts; Tony, 2026-10-10): one value
@@ -93,7 +106,8 @@ export interface PulldownProfile {
  * Tony's wide overhand baseline. The joint keyframes were read off the earlier bar-driven model at Tony's Motion Lab
  * settings (2026-10-09: grip 2.2x, 11° elbow bend at the top, trunk 8° back with 18° swing, line of pull to the pulley,
  * forearms on the cable with a ~1° break, elbows 5° behind the trunk line, arms 42° from the trunk at the bottom), so the
- * motion is the same within about 2 cm. Scapular values are PLACEHOLDERS.
+ * checks read the same. With only four keyframes (time thirds) the hand path differs from that model by up to ~6 cm
+ * mid-pull: the values were fitted to its arm directions and a smooth hand path. Scapular values are PLACEHOLDERS.
  */
 export const GOOD_PULLDOWN: PulldownProfile = {
   reps: 3,
@@ -106,13 +120,13 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   pulleyAheadOfKneeM: -0.22,
   gripWidthXShoulder: 2.2,
   joints: {
-    trunk_flexion: [-8, -9.8, -12.5, -17, -21.5, -24.2, -26],
-    scapular_elevation: [0.03, 0.025, 0.017, 0.005, -0.008, -0.015, -0.02],
-    scapular_protraction: [0, -0.002, -0.004, -0.007, -0.011, -0.013, -0.015],
-    scapular_upward_rotation: [0, -2, -5, -10, -15, -18, -20],
-    shoulder_flexion: [150.9, 140.9, 128.7, 75.4, 16.9, 0.2, -6.7],
-    shoulder_abduction: [29.1, 46.4, 60.8, 72.2, 62.4, 50.6, 41.5],
-    elbow_flexion: [11, 44.1, 67.8, 93.4, 109.9, 116, 118.4],
+    trunk_flexion: [-8, -12.5, -21.5, -26],
+    scapular_elevation: [0.03, 0.017, -0.008, -0.02],
+    scapular_protraction: [0, -0.004, -0.011, -0.015],
+    scapular_upward_rotation: [0, -5, -15, -20],
+    shoulder_flexion: [150.9, 114.5, 31.4, -6.7],
+    shoulder_abduction: [29.1, 53.7, 64, 41.5],
+    elbow_flexion: [11, 63.8, 103.8, 118.4],
   },
 
   gripType: "overhand",
@@ -140,39 +154,39 @@ export const PULLDOWN_FAULTS = {
   momentum_swing: {
     set: { concentricS: 0.6, seed: 2 },
     add: {
-      trunk_flexion: [-2, -3, -4.5, -7, -9.5, -11, -12],
-      shoulder_flexion: [-2.9, -5.1, -8.8, 0.2, 12.8, 9.9, 6.7],
-      shoulder_abduction: [-0.1, -1.9, -4.2, -7.7, -3, 1.7, 5],
-      elbow_flexion: [0, -2.9, -5.2, -8.6, -10.8, -11, -10.4],
+      trunk_flexion: [-2, -4.5, -9.5, -12],
+      shoulder_flexion: [-2.9, -2, 2.9, 6.7],
+      shoulder_abduction: [-0.1, -1.8, -1.1, 5],
+      elbow_flexion: [0, -4.1, -6.1, -10.4],
     },
   },
   /** Elbows never straighten at the top and the bar stops around the chin. */
   partial_rom: {
     set: { seed: 3 },
     add: {
-      shoulder_flexion: [-11.7, -2.7, 0.3, 19, 32.6, 27.6, 23],
-      shoulder_abduction: [11.7, 5, -0.2, -3.3, 6, 13.7, 18.8],
-      elbow_flexion: [29, 8.9, -0.3, -8.3, -12, -12.2, -11.3],
+      shoulder_flexion: [-11.7, 4.9, 21.6, 23],
+      shoulder_abduction: [11.7, 3.7, 4.9, 18.8],
+      elbow_flexion: [29, 2.3, -6.7, -11.3],
     },
   },
   /** Shoulders ride up toward the ears instead of depressing as the bar comes down. */
   shrug: {
     set: { seed: 4 },
     add: {
-      scapular_elevation: [0, 0.007, 0.018, 0.035, 0.053, 0.063, 0.07],
-      scapular_upward_rotation: [0, 2, 5, 10, 15, 18, 20],
-      shoulder_flexion: [0, -1.4, -5.2, -9.2, 5.7, 2.4, 0.2],
-      shoulder_abduction: [0, 0.4, 0.1, -5, -10.1, -3.9, -0.6],
-      elbow_flexion: [0, 1, 1.4, 0.4, -2.4, -4.9, -6.8],
+      scapular_elevation: [0, 0.018, 0.053, 0.07],
+      scapular_upward_rotation: [0, 5, 15, 20],
+      shoulder_flexion: [0, -1.5, -4.6, 0.2],
+      shoulder_abduction: [0, -1.5, -3.9, -0.6],
+      elbow_flexion: [0, -0.8, 0.8, -6.8],
     },
   },
   /** Pulls past the trunk line: the whole arm rotates back around the shoulder at the bottom. */
   over_pull: {
     set: { seed: 9 },
     add: {
-      shoulder_flexion: [0, -1.5, -5.2, -35.2, -19.2, -20.9, -25.4],
-      shoulder_abduction: [0, 2.8, 5.1, -0.2, -14.4, -15.6, -13.6],
-      elbow_flexion: [0, 5, 8.1, 10.6, 9.3, 5.7, 1.9],
+      shoulder_flexion: [0, -12.1, -21.8, -25.4],
+      shoulder_abduction: [0, -5.3, -21.2, -13.6],
+      elbow_flexion: [0, 3, 9.2, 1.9],
     },
   },
   /** Bar is let go on the way up instead of being lowered under control. */
@@ -181,9 +195,9 @@ export const PULLDOWN_FAULTS = {
   elbows_forward: {
     set: { gripWidthXShoulder: 1.1, seed: 8 },
     add: {
-      shoulder_flexion: [-1.2, -14, -21.4, 3.7, 30.5, 17.6, 0],
-      shoulder_abduction: [-27, -43.8, -57.8, -68.5, -59.1, -20.5, 0.1],
-      elbow_flexion: [0, 7.6, 13.3, 21.7, 30.5, 34.6, 35],
+      shoulder_flexion: [-1.2, -6.5, 16.1, 0],
+      shoulder_abduction: [-27, -51.1, -57.3, 0.1],
+      elbow_flexion: [0, 15.5, 36.1, 35],
     },
   },
   /** Chin pokes forward as the bar comes down. */
@@ -226,13 +240,13 @@ export const PULLDOWN_SETUPS = {
     bottomPauseS: 0.2,
     topPauseS: 0.2,
     joints: {
-      trunk_flexion: [-6, -6.7, -7.8, -9.5, -11.2, -12.3, -13],
-      scapular_elevation: [0.03, 0.025, 0.017, 0.005, -0.008, -0.015, -0.02],
-      scapular_protraction: [0, -0.002, -0.004, -0.007, -0.011, -0.013, -0.015],
-      scapular_upward_rotation: [0, -2, -5, -10, -15, -18, -20],
-      shoulder_flexion: [137.1, 125.5, 113.1, 96, 80.3, 71.2, 65.1],
-      shoulder_abduction: [2.1, 3.3, 4.1, 4.6, 5.3, 5.7, 6],
-      elbow_flexion: [18, 36.7, 53.2, 71.8, 84.8, 90.7, 94],
+      trunk_flexion: [-6, -7.8, -11.2, -13],
+      scapular_elevation: [0.03, 0.017, -0.008, -0.02],
+      scapular_protraction: [0, -0.004, -0.011, -0.015],
+      scapular_upward_rotation: [0, -5, -15, -20],
+      shoulder_flexion: [137.1, 113, 80.5, 65.1],
+      shoulder_abduction: [2.1, 4.2, 5.2, 6],
+      elbow_flexion: [18, 53.2, 84.8, 94],
     },
   },
   // Forearms on the cable; the bar stops around the collarbone where the forearm would leave it.
@@ -242,13 +256,13 @@ export const PULLDOWN_SETUPS = {
     attachment: "neutral_bar",
     gripWidthXShoulder: 1.5,
     joints: {
-      trunk_flexion: [-8, -9.8, -12.5, -17, -21.5, -24.2, -26],
-      scapular_elevation: [0.03, 0.025, 0.017, 0.005, -0.008, -0.015, -0.02],
-      scapular_protraction: [0, -0.002, -0.004, -0.007, -0.011, -0.013, -0.015],
-      scapular_upward_rotation: [0, -2, -5, -10, -15, -18, -20],
-      shoulder_flexion: [144.5, 125.2, 108.6, 76.8, 46.5, 32.6, 21.6],
-      shoulder_abduction: [13.5, 21.7, 32, 33.1, 28.7, 10.4, 10.6],
-      elbow_flexion: [11, 43.7, 67.1, 91.7, 106.8, 112, 113.8],
+      trunk_flexion: [-8, -12.5, -21.5, -26],
+      scapular_elevation: [0.03, 0.017, -0.008, -0.02],
+      scapular_protraction: [0, -0.004, -0.011, -0.015],
+      scapular_upward_rotation: [0, -5, -15, -20],
+      shoulder_flexion: [144.5, 107.5, 47.8, 21.6],
+      shoulder_abduction: [13.5, 31.5, 25.4, 10.6],
+      elbow_flexion: [11, 68.1, 105.1, 113.8],
     },
   },
 } satisfies Record<string, PulldownProfile>;
@@ -328,7 +342,7 @@ export function clipSeconds(p: PulldownProfile): number {
 function keyCurve(ys: readonly number[], x: number): number {
   const xs = PULLDOWN_KEY_AT;
   const n = xs.length;
-  if (x <= xs[0]) return ys[0]!;
+  if (x <= xs[0]!) return ys[0]!;
   if (x >= xs[n - 1]!) return ys[n - 1]!;
   const h = (i: number) => xs[i + 1]! - xs[i]!;
   const d = (i: number) => (ys[i + 1]! - ys[i]!) / h(i);
