@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { analyzeKinematics } from "../index";
 import { calibrateSkeleton } from "../body";
 import { POSTURE_VARIANTS, synthesizePostureScreen } from "../posture";
+import { JOINT_END_RANGES, JOINT_MOTIONS, jointLimits } from "../joints";
 import {
   DEFAULT_PULLDOWN_PARAMS,
   DEFAULT_PULLDOWN_PACING,
@@ -388,5 +389,26 @@ describe("grip from arm lengths", () => {
     const base = recommendedGrip(PULLDOWN_SYNTH_ARMS).gripWidthM;
     const longArms = recommendedGrip({ ...PULLDOWN_SYNTH_ARMS, upperArmM: 0.34 }).gripWidthM;
     expect(longArms - base).toBeCloseTo(0.04 * (Math.sin((42 * Math.PI) / 180) + 0.93), 6);
+  });
+
+  it("stops every joint at its end range, so a keyframe past anatomy can't be simulated (Tony, 2026-10-10)", () => {
+    for (const id of Object.keys(JOINT_END_RANGES)) expect(id in JOINT_MOTIONS).toBe(true);
+    const p = pulldownProfileFor("wide_overhand");
+    const past = { ...p, joints: { ...p.joints, elbow_flexion: [11, 80, 170, 175], scapular_elevation: [0.03, 0, -0.08, -0.1] } };
+    const [, elbowMax] = jointLimits("elbow_flexion");
+    const [depressionMax] = jointLimits("scapular_elevation");
+    for (let prog = 0; prog <= 1.0001; prog += 0.05) {
+      const j = jointsAt(past, prog);
+      expect(j.elbow_flexion).toBeLessThanOrEqual(elbowMax);
+      expect(j.scapular_elevation).toBeGreaterThanOrEqual(depressionMax);
+    }
+    expect(jointsAt(past, 1).elbow_flexion).toBe(elbowMax);
+    // Every good-rep baseline sits inside the end ranges, so the stops never change Tony's baselines.
+    for (const setup of Object.keys(PULLDOWN_SETUPS) as PulldownSetup[])
+      for (const [name, keys] of Object.entries(pulldownProfileFor(setup).joints)) {
+        if (name === "scapular_upward_rotation") continue;
+        const [lo, hi] = jointLimits(name as keyof typeof JOINT_MOTIONS);
+        for (const x of keys) expect(x >= lo && x <= hi).toBe(true);
+      }
   });
 });

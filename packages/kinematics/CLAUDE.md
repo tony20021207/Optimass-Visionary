@@ -57,6 +57,10 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
   (sticking point / hitch on the bar's room height; check smooth_pull, fault uneven_pacing) and set-level
   `tempo_variation_pct` (CV of pull/return times, addSetFeatures; check tempo_consistent, NaN = info for 1 rep). Faults
   sticking_point and inconsistent_tempo (`tempoDrift`: later reps slower).
+- Anatomical end ranges (Tony, 2026-10-10): `src/joints/end-ranges.json` (PLACEHOLDER, Tony to set) gives each joint
+  motion's stop in its − and + direction; `jointsAt` clamps to it (scapular upward rotation: the rhythm + deviation total,
+  in shoulderAt) and Motion Lab's joint sliders stop there. Because anatomy caps one side, checks only bound the side a
+  form error can exceed (e.g. scapular depression needs no "too much" limit).
 - Lifter from the posture check (Tony, 2026-10-10): `pulldownBodyFromSkeleton(calibrateSkeleton(captures))` gives
   `profile.body` (bone lengths per side, trunk, widths); the joint keyframes then move that person's skeleton.
 - Forearms on the line of pull in the FRONT view too, over the bottom 80% of the pull (Tony, 2026-10-09): check

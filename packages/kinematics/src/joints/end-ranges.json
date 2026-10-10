@@ -1,0 +1,13 @@
+{
+  "$comment": "PLACEHOLDER anatomical end ranges, for Tony to set. Each joint motion stops here in the simulation and in Motion Lab's sliders: min = end range in the − direction (e.g. scapular depression), max = in the + direction (e.g. elevation). A motion can't go past anatomy, so only the side a form error can exceed needs a Tier 1 check (Tony, 2026-10-10). Values are rough textbook active ranges, not clinical norms for this app; null = no anatomical stop (segment angles such as trunk vs vertical, or not set yet). Units follow joints/catalogue.ts.",
+  "reviewedBy": null,
+  "ranges": {
+    "trunk_flexion": { "min": null, "max": null, "why": "Trunk line vs vertical mixes hip and spine motion, so it has no single end range." },
+    "scapular_elevation": { "min": -0.03, "max": 0.08, "why": "PLACEHOLDER: depression ~3 cm, elevation ~8 cm from rest (shoulder joint centre along the trunk line)." },
+    "scapular_protraction": { "min": -0.03, "max": 0.06, "why": "PLACEHOLDER: retraction ~3 cm, protraction ~6 cm from rest." },
+    "scapular_upward_rotation": { "min": -20, "max": 60, "why": "PLACEHOLDER: total from rest (rhythm + keyed deviation). Downward kept at −20 so Tony's narrow underhand bottom (−17) fits; textbook downward rotation from rest is smaller." },
+    "shoulder_elevation": { "min": 0, "max": 180, "why": "PLACEHOLDER: arm at the side to straight overhead." },
+    "shoulder_plane_of_elevation": { "min": -45, "max": 130, "why": "PLACEHOLDER: ~45° horizontal abduction behind the frontal plane to ~130° horizontal adduction across the body." },
+    "elbow_flexion": { "min": 0, "max": 150, "why": "PLACEHOLDER: full extension to ~150° active flexion (hyperextension not simulated)." }
+  }
+}

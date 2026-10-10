@@ -7,6 +7,7 @@ import type { Skeleton } from "../body/skeleton";
 import { SYNTH_STATURE_M } from "../posture/synth";
 import { renderSequence, type Body } from "../synth-render";
 import type { JointMotionId } from "../joints/catalogue";
+import { clampToEndRange } from "../joints/end-ranges";
 import { add, cross, dist, dot, scale, sub, unit, v, type Vec3 } from "../vec3";
 
 export type PulldownGripType = "overhand" | "underhand" | "neutral";
@@ -548,9 +549,16 @@ export function jointCurveAt(ys: readonly number[], prog: number, curve: Pulldow
   return curve === "smooth" ? splineCurve(ys, prog) : pchipCurve(ys, prog);
 }
 
+// Each joint stops at its anatomical end range (joints/end-ranges.json, Tony 2026-10-10). Scapular upward rotation is
+// keyed as a deviation from the rhythm, so its stop is applied to the total in shoulderAt.
 /** Every joint's value at rep progress `prog`. */
 export function jointsAt(p: PulldownProfile, prog: number): Record<PulldownJointName, number> {
-  return Object.fromEntries(PULLDOWN_JOINT_NAMES.map((n) => [n, jointCurveAt(p.joints[n], prog, p.jointCurve)])) as Record<PulldownJointName, number>;
+  return Object.fromEntries(
+    PULLDOWN_JOINT_NAMES.map((n) => {
+      const x = jointCurveAt(p.joints[n], prog, p.jointCurve);
+      return [n, n === "scapular_upward_rotation" ? x : clampToEndRange(n, x)];
+    }),
+  ) as Record<PulldownJointName, number>;
 }
 
 // Body frame: x = toward the lifter's left, y = up, z = forward (the way the lifter faces). Origin at the hip midpoint.
@@ -579,7 +587,7 @@ function shoulderAt(j: JointValues, s: 1 | -1, body: PulldownBody, rhythm: Scapu
   const { U, F } = trunkFrame(j.trunk_flexion);
   const protraction = j.scapular_protraction;
   // Upward rotation from rest = the variation's rhythm at this arm elevation + the keyed deviation from it.
-  const down = rad(-(rhythmUpwardRotationDeg(rhythm, j.shoulder_elevation) + j.scapular_upward_rotation));
+  const down = rad(-clampToEndRange("scapular_upward_rotation", rhythmUpwardRotationDeg(rhythm, j.shoulder_elevation) + j.scapular_upward_rotation));
   const out = body.shoulderHalfWidth + 0.4 * protraction - SCAPULA_ROTATION_RADIUS * (1 - Math.cos(down));
   const up = j.scapular_elevation - SCAPULA_ROTATION_RADIUS * Math.sin(down);
   return add(add(add(scale(U, body.trunk), scale(U, up)), scale(F, protraction)), scale(L, s * out));
