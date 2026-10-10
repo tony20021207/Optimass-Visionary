@@ -82,6 +82,19 @@ export interface PulldownBody {
   shin: number;
 }
 
+export interface PulldownPacing {
+  /** Pull down: [top → ⅓ key, ⅓ → ⅔ key, ⅔ key → bottom]. */
+  concentric: [number, number, number];
+  /** Return: [bottom → ⅔ key, ⅔ → ⅓ key, ⅓ key → top]. */
+  eccentric: [number, number, number];
+}
+
+/**
+ * Claude's starting pacing (PLACEHOLDER, Tony to set): a steady pull with a little more time in the middle, and a return
+ * that slows toward the stretch at the top.
+ */
+export const DEFAULT_PULLDOWN_PACING: PulldownPacing = { concentric: [0.3, 0.4, 0.3], eccentric: [0.25, 0.4, 0.35] };
+
 /** How one synthetic set moves. Times are seconds, distances meters, angles degrees. */
 export interface PulldownProfile {
   reps: number;
@@ -115,6 +128,14 @@ export interface PulldownProfile {
    * speed arrives in the first frames of the pull instead of building up).
    */
   yank: number;
+  /**
+   * Pacing (Tony, 2026-10-10): share of the pull's time spent in each part between the keyframes (top → ⅓ key → ⅔ key →
+   * bottom, i.e. the first 25%, middle 50% and last 25% of bar progress), and the same for the return, ordered from the
+   * bottom up. Absent = one even ease in and out (about a third of the time each). Shares are normalised.
+   */
+  pacing?: PulldownPacing;
+  /** Rep-to-rep tempo drift (fatigue): the first rep is on tempo and each later rep is slower, the last taking (1 + drift)× the time. */
+  tempoDrift?: number;
   /** The lifter's bone lengths (pulldownBodyFromSkeleton); the default synthetic lifter when absent. */
   body?: PulldownBody;
   /** How the keyframes become motion (jointCurveAt); "pchip" when absent. */
@@ -231,6 +252,10 @@ export const PULLDOWN_FAULTS = {
   asymmetric: { set: { rightArmLag: 0.12, seed: 6 } },
   /** Bar is yanked down from the top instead of the pull building speed smoothly. */
   yank: { set: { yank: 1, seed: 10 } },
+  /** The bar slows mid-pull (a sticking point) and speeds up again: most of the pull's time goes to the middle part. */
+  sticking_point: { set: { pacing: { concentric: [0.1, 0.8, 0.1], eccentric: [0.3, 0.4, 0.3] }, seed: 11 } },
+  /** Reps get slower through the set, as with fatigue: the last rep takes 60% longer than the first. */
+  inconsistent_tempo: { set: { tempoDrift: 0.6, seed: 12 } },
 } satisfies Record<string, PulldownFault>;
 export type PulldownVariant = keyof typeof PULLDOWN_FAULTS;
 
@@ -344,25 +369,90 @@ const FPS = 30;
 const rad = (d: number) => (d * Math.PI) / 180;
 const ease = (p: number) => (1 - Math.cos(Math.PI * Math.min(1, Math.max(0, p)))) / 2;
 
+/**
+ * Smooth monotone timing curve through (0, 0), (s1, y1), (s1 + s2, y2), (1, 1): starts and ends at rest, the speed
+ * changes smoothly, and the time shares s of the three parts are met exactly.
+ */
+function pacedProgress(shares: readonly number[], x: number, ys: readonly number[]): number {
+  const tot = shares.reduce((a, b) => a + b, 0) || 1;
+  const xs = [0, shares[0]! / tot, (shares[0]! + shares[1]!) / tot, 1];
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const h = (i: number) => xs[i + 1]! - xs[i]!;
+  const d = (i: number) => (ys[i + 1]! - ys[i]!) / h(i);
+  // Fritsch–Carlson interior slopes; zero speed at both ends.
+  const slope = (i: number) => (i === 0 || i === 3 ? 0 : (3 * (h(i - 1) + h(i))) / ((2 * h(i) + h(i - 1)) / d(i - 1) + (h(i) + 2 * h(i - 1)) / d(i)));
+  let i = 0;
+  while (x > xs[i + 1]!) i++;
+  const t = (x - xs[i]!) / h(i);
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return (2 * t3 - 3 * t2 + 1) * ys[i]! + (t3 - 2 * t2 + t) * h(i) * slope(i) + (-2 * t3 + 3 * t2) * ys[i + 1]! + (t3 - t2) * h(i) * slope(i + 1);
+}
+
+const travelCache = new Map<string, number[]>();
+
+/**
+ * Rep progress where the bar (wrist midpoint height) has covered 0, 25%, 75% and 100% of its travel. Pacing shares are
+ * set on the bar's travel, the same thirds Tier 1 measures from video, not on the model's progress scale.
+ */
+function travelKeys(p: PulldownProfile): number[] {
+  const key = JSON.stringify([p.joints, p.jointCurve, rhythmOf(p), p.gripWidthXShoulder, p.body]);
+  const hit = travelCache.get(key);
+  if (hit) return hit;
+  if (travelCache.size > 32) travelCache.clear();
+  const N = 200;
+  const y = Array.from({ length: N + 1 }, (_, i) => {
+    const b = poseAt(i / N, p);
+    return (b.left_wrist.y + b.right_wrist.y) / 2;
+  });
+  const at = (share: number) => {
+    const target = y[0]! + (y[N]! - y[0]!) * share;
+    for (let i = 1; i <= N; i++) if ((y[i]! - target) * Math.sign(y[N]! - y[0]!) >= 0) return (i - 1 + (target - y[i - 1]!) / (y[i]! - y[i - 1]! || 1)) / N;
+    return share;
+  };
+  const keys = [0, at(0.25), at(0.75), 1];
+  travelCache.set(key, keys);
+  return keys;
+}
+
+/** Concentric and eccentric seconds of rep `i` (tempoDrift slows the set down rep by rep). */
+function repTiming(p: PulldownProfile, i: number): { con: number; ecc: number; total: number } {
+  const k = p.reps > 1 && p.tempoDrift ? 1 + (p.tempoDrift * i) / (p.reps - 1) : 1;
+  const con = p.concentricS * k;
+  const ecc = p.eccentricS * k;
+  return { con, ecc, total: con + p.bottomPauseS + ecc + p.topPauseS };
+}
+
 /** Rep progress at time t: 0 = top (arms overhead), 1 = bottom. Joint keyframes are placed on this scale. */
 export function barProgressAt(t: number, p: PulldownProfile): number {
-  const repS = p.concentricS + p.bottomPauseS + p.eccentricS + p.topPauseS;
-  const tt = t - p.leadS;
-  if (tt < 0 || tt >= repS * p.reps) return 0;
-  let r = tt % repS;
-  if (r < p.concentricS) {
-    const x = r / p.concentricS;
-    return (1 - p.yank) * ease(x) + p.yank * (1 - (1 - x) ** 3);
+  let r = t - p.leadS;
+  if (r < 0) return 0;
+  let i = 0;
+  while (i < p.reps && r >= repTiming(p, i).total) r -= repTiming(p, i++).total;
+  if (i >= p.reps) return 0;
+  const { con, ecc } = repTiming(p, i);
+  if (r < con) {
+    const x = r / con;
+    const smooth = p.pacing ? pacedProgress(p.pacing.concentric, x, travelKeys(p)) : ease(x);
+    return (1 - p.yank) * smooth + p.yank * (1 - (1 - x) ** 3);
   }
-  r -= p.concentricS;
+  r -= con;
   if (r < p.bottomPauseS) return 1;
   r -= p.bottomPauseS;
-  if (r < p.eccentricS) return 1 - ease(r / p.eccentricS);
+  if (r < ecc) {
+    if (!p.pacing) return 1 - ease(r / ecc);
+    // The return runs bottom → top, so its parts sit on the travel keys mirrored.
+    const k = travelKeys(p);
+    return 1 - pacedProgress(p.pacing.eccentric, r / ecc, [0, 1 - k[2]!, 1 - k[1]!, 1]);
+  }
   return 0;
 }
 
 export function clipSeconds(p: PulldownProfile): number {
-  return p.leadS + p.reps * (p.concentricS + p.bottomPauseS + p.eccentricS + p.topPauseS) + 0.3;
+  let total = p.leadS + 0.3;
+  for (let i = 0; i < p.reps; i++) total += repTiming(p, i).total;
+  return total;
 }
 
 /**

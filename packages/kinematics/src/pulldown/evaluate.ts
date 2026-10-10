@@ -96,7 +96,8 @@ export function pulldownParamsFor(params: PulldownParams, variation: string): Pu
 export function evaluatePulldownRep(features: PulldownFeatures, params: PulldownParams = DEFAULT_PULLDOWN_PARAMS): CheckResult[] {
   return params.checks.map((c) => {
     const value = features[c.feature];
-    const judged = c.min !== undefined || c.max !== undefined;
+    // A value that can't be measured here (NaN, e.g. tempo consistency on a single rep) is reported, not judged.
+    const judged = (c.min !== undefined || c.max !== undefined) && !Number.isNaN(value);
     const ok = (c.min === undefined || value >= c.min) && (c.max === undefined || value <= c.max);
     return {
       id: c.id,

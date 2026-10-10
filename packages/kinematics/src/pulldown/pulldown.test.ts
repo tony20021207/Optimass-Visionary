@@ -5,6 +5,8 @@ import { calibrateSkeleton } from "../body";
 import { POSTURE_VARIANTS, synthesizePostureScreen } from "../posture";
 import {
   DEFAULT_PULLDOWN_PARAMS,
+  DEFAULT_PULLDOWN_PACING,
+  evaluatePulldownRep,
   elbowFlexionHoldingForearm,
   jointsAt,
   PULLDOWN_JOINT_NAMES,
@@ -142,6 +144,9 @@ describe("placeholder parameters vs synthetic reps", () => {
     ["asymmetric", ["asymmetric_pull"]],
     ["forward_head", ["forward_head"]],
     ["yank", ["yanking"]],
+    // Slowing mid-pull, then speeding up again to finish in time: a sticking point, and the re-acceleration reads as a yank.
+    ["sticking_point", ["uneven_pacing", "yanking"]],
+    ["inconsistent_tempo", ["inconsistent_tempo"]],
   ] as const)("%s trips only its own checks: %j", (variant, faults) => {
     expect([...failedFaults(variant)].sort()).toEqual([...faults].sort());
   });
@@ -289,6 +294,26 @@ describe("pulldown variations", () => {
       }
     }
     expect(corner(smooth, "elbow_flexion")).toBeLessThan(corner(base, "elbow_flexion") / 10);
+  });
+
+  it("paces each part of the pull and return as set, and Tier 1 reads the shares back (Tony, 2026-10-10)", () => {
+    const pacing = { concentric: [0.2, 0.5, 0.3], eccentric: [0.4, 0.4, 0.2] } as const;
+    for (const setup of Object.keys(PULLDOWN_SETUPS) as PulldownSetup[]) {
+      for (const p of [{ ...pulldownProfileFor(setup), pacing: DEFAULT_PULLDOWN_PACING }, { ...pulldownProfileFor(setup), pacing: { concentric: [...pacing.concentric], eccentric: [...pacing.eccentric] } as typeof DEFAULT_PULLDOWN_PACING }]) {
+        for (const r of analyzePulldown(synthesizePulldown(p, { camera: at(135) })).reps) {
+          const f = r.features;
+          const got = [f.concentric_part1_share, f.concentric_part2_share, f.concentric_part3_share, f.eccentric_part1_share, f.eccentric_part2_share, f.eccentric_part3_share];
+          [...p.pacing!.concentric, ...p.pacing!.eccentric].forEach((want, i) => expect(Math.abs(got[i]! - want)).toBeLessThan(0.12)); // the 5% bands at each end trim the slow ends
+        }
+      }
+    }
+  });
+
+  it("tempo consistency needs 2+ reps: a single rep is reported, not judged", () => {
+    const r = analyzePulldown(synthesizePulldown({ ...pulldownProfileFor("wide_overhand"), reps: 1 }, { camera: at(135) })).reps;
+    expect(r).toHaveLength(1);
+    expect(r[0]!.checks.find((c) => c.id === "tempo_consistent")!.status).toBe("info");
+    expect(evaluatePulldownRep({ ...r[0]!.features, tempo_variation_pct: 30 }).find((c) => c.id === "tempo_consistent")!.status).toBe("fail");
   });
 
   it("judges each grip with its own limits (Tony, 2026-10-10)", () => {

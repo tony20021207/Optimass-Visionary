@@ -150,6 +150,28 @@
       "why": "Left and right elbow angles should track each other.",
       "placeholder": true
     },
+    {
+      "id": "smooth_pull",
+      "feature": "speed_dip_pct",
+      "max": 60,
+      "fault": "uneven_pacing",
+      "why": "The bar's speed should build to one peak and ease off, on the pull and on the return; a dip in between is a sticking point or hitch (Tony, 2026-10-10). Synthetic: smooth reps up to ~16% (narrow underhand shrug ~29%), the over-pull and elbows-forward faults ~38-50% (their bar path slows near the bottom on its own), a mid-pull sticking point ~74-81%.",
+      "placeholder": true
+    },
+    {
+      "id": "tempo_consistent",
+      "feature": "tempo_variation_pct",
+      "max": 10,
+      "fault": "inconsistent_tempo",
+      "why": "Reps in a set should keep the same tempo (Tony, 2026-10-10). Rep-to-rep variation of the pull or return time; synthetic steady sets ~0-4%, a set slowing 60% from first to last rep ~20%. Needs 2+ reps.",
+      "placeholder": true
+    },
+    { "id": "pace_pull_start", "feature": "concentric_part1_share", "why": "Reported only. Share of the pull's time spent on its first 25% of bar travel. Add min/max to enforce a pacing.", "placeholder": true },
+    { "id": "pace_pull_middle", "feature": "concentric_part2_share", "why": "Reported only. Share of the pull's time spent on its middle 50% of bar travel.", "placeholder": true },
+    { "id": "pace_pull_end", "feature": "concentric_part3_share", "why": "Reported only. Share of the pull's time spent on its last 25% of bar travel, into the bottom.", "placeholder": true },
+    { "id": "pace_return_start", "feature": "eccentric_part1_share", "why": "Reported only. Share of the return's time spent leaving the bottom (first 25% of travel back up).", "placeholder": true },
+    { "id": "pace_return_middle", "feature": "eccentric_part2_share", "why": "Reported only. Share of the return's time spent on its middle 50%.", "placeholder": true },
+    { "id": "pace_return_end", "feature": "eccentric_part3_share", "why": "Reported only. Share of the return's time spent reaching the stretch at the top (last 25%).", "placeholder": true },
     { "id": "concentric_time", "feature": "concentric_s", "why": "Reported only.", "placeholder": true },
     { "id": "bottom_pause_time", "feature": "bottom_pause_s", "why": "Reported only.", "placeholder": true },
     { "id": "top_pause_time", "feature": "top_pause_s", "why": "Reported only. Add a min to require a stretch pause at the top.", "placeholder": true },

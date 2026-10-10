@@ -2,7 +2,7 @@ import type { PoseSequence, RepSegment } from "@optimass/types";
 import { fitToSkeleton, type FitResult, type Skeleton } from "../body";
 import type { KinematicSeries } from "../index";
 import { evaluatePulldownRep, type CheckResult, type PulldownParams } from "./evaluate";
-import { pulldownFeatures, type PulldownFeatures } from "./features";
+import { addSetFeatures, pulldownFeatures, type PulldownFeatures } from "./features";
 import { armDimensionsFromSkeleton, recommendedGrip, type GripRule, type RecommendedGrip } from "./grip";
 import { pulldownSeries, type MetricOptions } from "./metrics";
 import { segmentPulldownReps } from "./segment";
@@ -48,7 +48,9 @@ export function analyzePulldown(seq: PoseSequence, params?: PulldownParams, opti
   const reps = segmentPulldownReps(series).map((rep) => {
     const features = pulldownFeatures(series, rep);
     if (grip) features.grip_vs_recommended = features.grip_width_x_shoulder / grip.gripWidthXShoulder;
-    return { rep, features, checks: evaluatePulldownRep(features, params) };
+    return { rep, features, checks: [] as CheckResult[] };
   });
+  addSetFeatures(reps);
+  for (const r of reps) r.checks = evaluatePulldownRep(r.features, params);
   return { series, reps, ...(fit && { fit: { maxBoneErrorM: fit.maxBoneErrorM } }), ...(grip && { recommendedGrip: grip }) };
 }

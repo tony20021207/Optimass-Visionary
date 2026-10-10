@@ -51,6 +51,12 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
 - Forearm held, elbow follows (Tony, 2026-10-10): `elbowFlexionHoldingForearm(p, k, targetDeg)` solves keyframe k's elbow
   flexion so the left forearm sits `targetDeg` off the cable in the side view (`pulldownForearmToCableDeg`), hand kept on
   the bar. Motion Lab's "Keep the forearm's direction" toggle uses it while another joint is dragged.
+- Pacing, smoothness, tempo (Tony, 2026-10-10): `profile.pacing` (opt-in; DEFAULT_PULLDOWN_PACING are Claude's PLACEHOLDER
+  shares) splits the pull's and the return's time over the first 25% / middle 50% / last 25% of the bar's travel
+  (travelKeys maps them onto rep progress). Tier 1 reads the same shares back (`*_partN_share`, info), `speed_dip_pct`
+  (sticking point / hitch on the bar's room height; check smooth_pull, fault uneven_pacing) and set-level
+  `tempo_variation_pct` (CV of pull/return times, addSetFeatures; check tempo_consistent, NaN = info for 1 rep). Faults
+  sticking_point and inconsistent_tempo (`tempoDrift`: later reps slower).
 - Lifter from the posture check (Tony, 2026-10-10): `pulldownBodyFromSkeleton(calibrateSkeleton(captures))` gives
   `profile.body` (bone lengths per side, trunk, widths); the joint keyframes then move that person's skeleton.
 - Forearms on the line of pull in the FRONT view too, over the bottom 80% of the pull (Tony, 2026-10-09): check

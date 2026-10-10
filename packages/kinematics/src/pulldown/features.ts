@@ -2,7 +2,7 @@
 // editable parameter file.
 import type { RepSegment } from "@optimass/types";
 import type { KinematicSeries } from "../index";
-import { max, mean, min } from "../signal";
+import { derivative, max, mean, min, smooth } from "../signal";
 
 export const PULLDOWN_FEATURES = {
   elbow_flexion_top_deg: "Elbow flexion at the top (smallest in the rep, mean of both arms)",
@@ -40,12 +40,77 @@ export const PULLDOWN_FEATURES = {
   elbow_peak_acc_dps2: "Yank check: largest elbow flexion angular acceleration over the same window (both arms)",
   shoulder_peak_acc_dps2: "Yank check: largest upper-arm (humerothoracic elevation) angular acceleration over the same window (both arms)",
   trunk_peak_acc_dps2: "Yank check: largest trunk lean angular acceleration over the same window",
+  concentric_part1_share: "Pacing: share of the pull-down time spent in its first part (top to 25% of the bar's travel). Pull and return are timed between the 5% bands at the top and bottom, so the slow ends read slightly short",
+  concentric_part2_share: "Pacing: share of the pull-down time spent in its middle part (25% to 75% of bar travel)",
+  concentric_part3_share: "Pacing: share of the pull-down time spent in its last part (75% of bar travel to the bottom)",
+  eccentric_part1_share: "Pacing: share of the return time spent leaving the bottom (bottom to 75% of the way down)",
+  eccentric_part2_share: "Pacing: share of the return time spent in its middle part (75% to 25% of the way down)",
+  eccentric_part3_share: "Pacing: share of the return time spent reaching the top (25% of the way down to the top)",
+  speed_dip_pct: "Smoothness: deepest mid-movement slowdown of the bar, pull or return, as a percentage of the speed before and after it (0 = speed rises and falls once, no sticking point)",
+  tempo_variation_pct: "Tempo consistency across the set: rep-to-rep variation (coefficient of variation, %) of the pull-down or return time, whichever varies more. Same value on every rep; needs 2+ reps",
 } as const;
 export type PulldownFeature = keyof typeof PULLDOWN_FEATURES;
 export type PulldownFeatures = Record<PulldownFeature, number>;
 
 const phase = (rep: RepSegment, name: string) => rep.phases.find((p) => p.phase === name)!;
 const seconds = (p: { startMs: number; endMs: number }) => (p.endMs - p.startMs) / 1000;
+
+/**
+ * Time shares of a movement's three parts: frames from `from` to `to`, split where the bar has covered 25% and 75% of
+ * the way from `fromH` to `toH`.
+ */
+function partShares(height: number[], t: number[], from: number, to: number): [number, number, number] {
+  const total = t[to]! - t[from]!;
+  const fromH = height[from]!;
+  const toH = height[to]!;
+  const reach = (share: number) => {
+    for (let i = from; i <= to; i++) if ((height[i]! - fromH) / (toH - fromH) >= share) return t[i]!;
+    return t[to]!;
+  };
+  const a = reach(0.25);
+  const b = reach(0.75);
+  if (!(total > 0)) return [Number.NaN, Number.NaN, Number.NaN];
+  return [(a - t[from]!) / total, (b - a) / total, (t[to]! - b) / total];
+}
+
+/** Smoothing window (frames) for the bar-speed curve; signal processing, not a clinical value. */
+const SPEED_SMOOTHING = 9;
+
+/**
+ * Deepest slowdown in the middle of a movement: the bar's speed should rise to one peak and fall (a sticking point or
+ * a hitch shows as a dip between two peaks). Returns the dip as % of the lower of the two peaks around it (0 = none).
+ * Only the middle 80% of the movement counts, so the start and stop don't read as dips.
+ */
+function speedDipPct(height: number[], t: number[], from: number, to: number): number {
+  if (to - from < 6) return 0;
+  const raw = height.slice(from, to + 1);
+  const ts = t.slice(from, to + 1);
+  const speed = smooth(derivative(raw, ts).map(Math.abs), SPEED_SMOOTHING);
+  const lo = Math.floor(speed.length * 0.1);
+  const hi = Math.ceil(speed.length * 0.9);
+  let worst = 0;
+  for (let i = lo + 1; i < hi - 1; i++) {
+    if (!(speed[i]! <= speed[i - 1]! && speed[i]! <= speed[i + 1]!)) continue;
+    const before = max(speed.slice(0, i));
+    const after = max(speed.slice(i + 1));
+    const ref = Math.min(before, after);
+    if (ref > 0) worst = Math.max(worst, ((ref - speed[i]!) / ref) * 100);
+  }
+  return worst;
+}
+
+/** Coefficient of variation (%) of a list of durations. */
+function cvPct(xs: number[]): number {
+  if (xs.length < 2) return Number.NaN;
+  const m = mean(xs);
+  return (Math.sqrt(mean(xs.map((x) => (x - m) ** 2))) / m) * 100;
+}
+
+/** Set-level numbers copied onto every rep (tempo consistency needs the whole set). */
+export function addSetFeatures(reps: { features: PulldownFeatures }[]): void {
+  const v = Math.max(cvPct(reps.map((r) => r.features.concentric_s)), cvPct(reps.map((r) => r.features.eccentric_s)));
+  for (const r of reps) r.features.tempo_variation_pct = v;
+}
 
 export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): PulldownFeatures {
   const m = (name: string, from = rep.startFrame, to = rep.endFrame) => (series.metrics[name] ?? []).slice(from, to + 1);
@@ -87,6 +152,14 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
       const cum = series.metrics[`${side}_${name}`]!;
       return cum[bottomFrame]! - cum[rep.startFrame]!;
     }));
+  // Pacing and smoothness on the bar (wrist midpoint) height in the room, above the hips: the shoulders move, the bar's
+  // path is what the lifter paces.
+  const bar = series.metrics.wrist_mid_up_m!;
+  const eccentric = phase(rep, "eccentric");
+  const eFrom = frameAt(eccentric.startMs);
+  const eTo = frameAt(eccentric.endMs);
+  const con = partShares(bar, t, cFrom, cTo);
+  const ecc = partShares(bar, t, eFrom, eTo);
   const ext = performed("shoulder_extension_cum_deg");
   const add = performed("shoulder_adduction_cum_deg");
 
@@ -132,5 +205,13 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
     elbow_peak_acc_dps2: peakAbs("left_elbow_flexion_acc_dps2", "right_elbow_flexion_acc_dps2"),
     shoulder_peak_acc_dps2: peakAbs("left_humerothoracic_elevation_acc_dps2", "right_humerothoracic_elevation_acc_dps2"),
     trunk_peak_acc_dps2: peakAbs("trunk_lean_acc_dps2"),
+    concentric_part1_share: con[0],
+    concentric_part2_share: con[1],
+    concentric_part3_share: con[2],
+    eccentric_part1_share: ecc[0],
+    eccentric_part2_share: ecc[1],
+    eccentric_part3_share: ecc[2],
+    speed_dip_pct: Math.max(speedDipPct(bar, t, cFrom, cTo), speedDipPct(bar, t, eFrom, eTo)),
+    tempo_variation_pct: Number.NaN, // filled in for the whole set by addSetFeatures
   };
 }
