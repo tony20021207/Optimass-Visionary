@@ -55,6 +55,11 @@ export interface PulldownProfile {
   /** Share of the bar's travel, at the bottom, over which the forearm leaves the pull line (0.25 = the last quarter). */
   forearmBreakFraction: number;
   /**
+   * With the forearm held on the cable: how far it may tilt sideways (seen from the front) before the solver trades
+   * side-view alignment for an upright forearm. Lower = straighter down from the front.
+   */
+  forearmFrontTiltFreeDeg: number;
+  /**
    * Where the pull stops: upper arm angle behind the trunk's frontal plane at the bottom (0 = elbow level with the
    * trunk line, + = elbow behind the body, the whole arm rotating back around the shoulder; − = elbow still in front).
    * The bar's bottom height is solved to hit it.
@@ -117,6 +122,7 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   bottomArmElevationDeg: 42,
   forearmOnLine: true,
   forearmBreakFraction: 0.25,
+  forearmFrontTiltFreeDeg: 12,
   bottomHumerusBehindDeg: 5,
   shoulderElevationTopM: 0.03,
   shoulderElevationBottomM: -0.02,
@@ -176,8 +182,10 @@ export const PULLDOWN_SETUPS = {
     ...GOOD_PULLDOWN,
     gripType: "underhand",
     gripWidthXShoulder: 1.1,
-    elbowsForward: 0.2,
+    // Elbows bend forward, not out: forearms straight down from the front for the whole pull (Tony, 2026-10-10).
+    elbowsForward: 1,
     forearmOnLine: true,
+    forearmFrontTiltFreeDeg: 3,
     bottomArmElevationDeg: 0,
     bottomHumerusBehindDeg: -5,
     topElbowFlexionDeg: 18,
@@ -353,16 +361,13 @@ const topBendWeight = (prog: number) => {
   return 1 - x * x * (3 - 2 * x);
 };
 
-/** How far the forearm may tilt from the cable, seen from the front, to stay exactly on it from the side (synth only). */
-const FRONT_TILT_FREE_DEG = 12;
-
 /**
  * Elbow for a shoulder and wrist with the forearm held on the cable line: seen from the side, the forearm points up
  * along `dir`, tilted `offLineDeg` forward of it (+ = elbow dropping behind the line). The elbow lies on a circle around
  * the shoulder–wrist axis; the point is picked to keep the forearm on the line from the side and upright from the front
  * (see the cost below).
  */
-function solveElbowOnLine(shoulder: Vec3, wrist: Vec3, dir: Vec3, offLineDeg: number, pole: Vec3): { elbow: Vec3; wrist: Vec3 } {
+function solveElbowOnLine(shoulder: Vec3, wrist: Vec3, dir: Vec3, offLineDeg: number, pole: Vec3, frontFreeDeg: number): { elbow: Vec3; wrist: Vec3 } {
   const a = BODY.upperArm;
   const b = BODY.forearm;
   const sw = sub(wrist, shoulder);
@@ -387,11 +392,11 @@ function solveElbowOnLine(shoulder: Vec3, wrist: Vec3, dir: Vec3, offLineDeg: nu
     const f = sub(w, elbowAt(psi));
     return Math.abs(Math.atan2(f.x, f.y));
   };
-  // Exact on the line from the side while the forearm stays within FRONT_TILT_FREE_DEG of upright from the front; past
+  // Exact on the line from the side while the forearm stays within frontFreeDeg of upright from the front; past
   // that (close grips: the hands are nearly in line with the shoulders, so the elbow can only stay on the line by swinging
   // out level with the hands) the forearm trades side-view error against front tilt. One smooth cost, so the elbow
   // never jumps between solutions mid-rep.
-  const free = rad(FRONT_TILT_FREE_DEG);
+  const free = rad(frontFreeDeg);
   const cost = (psi: number) => {
     const ft = frontTilt(psi);
     return residual(psi) ** 2 + 4 * Math.max(0, ft - free) ** 2 + 1e-3 * ft * ft;
@@ -600,7 +605,7 @@ function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: nu
     const k = p.forearmOnLine ? p.elbowsForward : p.elbowsForward * (1 - forearmOffLineAt(prog, breakDeg, p.forearmBreakFraction));
     const pole = add(add(scale(L, s * (1 - k)), scale(U, -1)), scale(F, -0.3 + 1.3 * k));
     const free = solveElbow(shoulder, wristTarget, pole);
-    const onLine = p.forearmOnLine ? solveElbowOnLine(shoulder, wristTarget, dir, offLine, pole) : free;
+    const onLine = p.forearmOnLine ? solveElbowOnLine(shoulder, wristTarget, dir, offLine, pole, p.forearmFrontTiltFreeDeg) : free;
     const { elbow, wrist } = blendElbow(shoulder, free, onLine, p.forearmOnLine ? topBendWeight(prog) : 1);
     const forearmDir = unit(sub(wrist, elbow));
     // Thumbs point toward the midline overhand, away from it underhand, and back toward the face on a neutral grip.
