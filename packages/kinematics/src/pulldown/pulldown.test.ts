@@ -2,7 +2,7 @@ import { POSE_LANDMARK_NAMES, RepSegment } from "@optimass/types";
 import { describe, expect, it } from "vitest";
 import { analyzeKinematics } from "../index";
 import { calibrateSkeleton } from "../body";
-import { POSTURE_VARIANTS, synthesizePostureScreen } from "../posture";
+import { POSTURE_VARIANTS, postureScreen, synthesizePostureScreen } from "../posture";
 import { JOINT_END_RANGES, JOINT_MOTIONS, jointLimits } from "../joints";
 import {
   DEFAULT_PULLDOWN_PARAMS,
@@ -10,6 +10,7 @@ import {
   evaluatePulldownRep,
   elbowFlexionHoldingForearm,
   jointsAt,
+  pulldownScapulaRestFromPosture,
   pulldownArmOnBar,
   elbowFlexionReachingBar,
   PULLDOWN_JOINT_NAMES,
@@ -396,14 +397,15 @@ describe("grip from arm lengths", () => {
   it("stops every joint at its end range, so a keyframe past anatomy can't be simulated (Tony, 2026-10-10)", () => {
     for (const id of Object.keys(JOINT_END_RANGES)) expect(id in JOINT_MOTIONS).toBe(true);
     const p = pulldownProfileFor("wide_overhand");
-    const past = { ...p, joints: { ...p.joints, elbow_flexion: [11, 80, 170, 175], scapular_elevation: [0.03, 0, -0.08, -0.1] } };
+    const past = { ...p, noiseM: 0, joints: { ...p.joints, elbow_flexion: [11, 80, 170, 175] } };
     const [, elbowMax] = jointLimits("elbow_flexion");
+    for (let prog = 0; prog <= 1.0001; prog += 0.05) expect(jointsAt(past, prog).elbow_flexion).toBeLessThanOrEqual(elbowMax);
+    // The scapula is keyed from the lifter's resting posture, so its stop applies to rest + key: depressing past the
+    // end range leaves the shoulder where the end range puts it.
     const [depressionMax] = jointLimits("scapular_elevation");
-    for (let prog = 0; prog <= 1.0001; prog += 0.05) {
-      const j = jointsAt(past, prog);
-      expect(j.elbow_flexion).toBeLessThanOrEqual(elbowMax);
-      expect(j.scapular_elevation).toBeGreaterThanOrEqual(depressionMax);
-    }
+    const depressed = (deg: number) => poseAt(1, { ...past, joints: { ...past.joints, scapular_elevation: [8, 0, -5, deg] } }).left_shoulder.y;
+    expect(depressed(depressionMax - 20)).toBeCloseTo(depressed(depressionMax), 6);
+    expect(depressed(depressionMax + 5)).toBeGreaterThan(depressed(depressionMax) + 0.005);
     expect(jointsAt(past, 1).elbow_flexion).toBe(elbowMax);
     // The elbow can hyperextend past straight (Tony, 2026-10-10).
     const [elbowMin] = jointLimits("elbow_flexion");
@@ -412,11 +414,11 @@ describe("grip from arm lengths", () => {
     // Every good-rep baseline sits inside the end ranges, so the stops never change Tony's baselines.
     for (const setup of Object.keys(PULLDOWN_SETUPS) as PulldownSetup[])
       for (const [name, keys] of Object.entries(pulldownProfileFor(setup).joints)) {
-        if (name === "scapular_upward_rotation") continue;
+        if (name.startsWith("scapular_")) continue;
         const [lo, hi] = jointLimits(name as keyof typeof JOINT_MOTIONS);
         for (const x of keys) expect(x >= lo && x <= hi).toBe(true);
       }
-  });
+  }, 30_000);
 
   it("flares the elbows out at the top by bending them, hands kept on the bar (Tony, 2026-10-10)", () => {
     const p = pulldownProfileFor("neutral_bar");
@@ -432,4 +434,19 @@ describe("grip from arm lengths", () => {
     expect(arm.shoulderRotationDeg).toBeLessThan(pulldownArmOnBar(p, 0).shoulderRotationDeg - 20);
     expect(elbowFlexionReachingBar(p, 0)).toBe(p.joints.elbow_flexion[0]);
   });
+
+  it("keys the scapula in clavicle degrees from each lifter's resting posture (Tony, 2026-10-10)", () => {
+    const rest = (v: keyof typeof POSTURE_VARIANTS) => pulldownScapulaRestFromPosture(postureScreen(synthesizePostureScreen(POSTURE_VARIANTS[v])));
+    const neutral = rest("neutral");
+    expect(Math.abs(neutral.left.protractionDeg)).toBeLessThan(1);
+    expect(Math.abs(neutral.left.elevationDeg)).toBeLessThan(1);
+    // Rounded shoulders start protracted; a dropped right shoulder starts that side lower.
+    expect(rest("rounded_shoulders").left.protractionDeg).toBeGreaterThan(15);
+    const drop = rest("shoulder_drop");
+    expect(drop.left.elevationDeg - drop.right.elevationDeg).toBeGreaterThan(8);
+    // Same keyframes, different resting posture: the shoulder joint sits further forward through the whole rep.
+    const p = { ...pulldownProfileFor("wide_overhand"), noiseM: 0 };
+    const rounded = { ...p, scapulaRest: rest("rounded_shoulders") };
+    for (const prog of [0, 0.5, 1]) expect(poseAt(prog, rounded).left_shoulder.z - poseAt(prog, p).left_shoulder.z).toBeGreaterThan(0.04);
+  }, 30_000);
 });

@@ -61,6 +61,11 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
   lower plane (elbows out, more internal rotation) can't reach the bar and armOnBar pulls the plane back.
   `elbowFlexionReachingBar(p, k)` gives the least bend that keeps the keyed plane; Motion Lab applies it after any joint
   drag. The elbow end range allows hyperextension (−10°, placeholder).
+- Scapula in clavicle degrees (Tony, 2026-10-10): scapular_elevation / scapular_protraction keyframes are degrees at
+  the sternoclavicular joint (clavicle = half the shoulder width), measured from the lifter's resting position
+  (`profile.scapulaRest`, from `pulldownScapulaRestFromPosture(postureScreen(...))`, PLACEHOLDER mapping in
+  joints/end-ranges.json `postureRest`). End-range stops apply to rest + key. Old metre keys were converted on the 0.2 m
+  model clavicle (poses within 1 mm).
 - Anatomical end ranges (Tony, 2026-10-10): `src/joints/end-ranges.json` (PLACEHOLDER, Tony to set) gives each joint
   motion's stop in its − and + direction; `jointsAt` clamps to it (scapular upward rotation: the rhythm + deviation total,
   in shoulderAt) and Motion Lab's joint sliders stop there. Because anatomy caps one side, checks only bound the side a

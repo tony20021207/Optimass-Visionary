@@ -34,17 +34,21 @@ export const JOINT_MOTIONS = {
     region: "scapula",
     positive: "elevation",
     negative: "depression",
-    unit: "m",
-    displayRange: [-0.06, 0.1],
-    note: "Shoulder joint centre along the trunk line. MediaPipe has no scapula points; this is read from the shoulder landmark.",
+    unit: "deg",
+    displayRange: [-15, 45],
+    note:
+      "Clavicle angle at the sternoclavicular joint, up (+) or down (−). In exercise keyframes, 0 = the lifter's own resting " +
+      "position from the posture check, so the same degrees scale to any build. MediaPipe has no scapula points; video reads it from the shoulder landmark.",
   },
   scapular_protraction: {
     region: "scapula",
     positive: "protraction",
     negative: "retraction",
-    unit: "m",
-    displayRange: [-0.05, 0.05],
-    note: "Shoulder joint centre gliding forward around the ribcage (−: back and toward the spine).",
+    unit: "deg",
+    displayRange: [-30, 30],
+    note:
+      "Clavicle angle at the sternoclavicular joint, forward around the ribcage (+) or back toward the spine (−). In exercise " +
+      "keyframes, 0 = the lifter's own resting position from the posture check.",
   },
   scapular_upward_rotation: {
     region: "scapula",
