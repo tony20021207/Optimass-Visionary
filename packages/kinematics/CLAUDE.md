@@ -64,6 +64,10 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
 - Before analysis, a standing posture check is captured straight-on from the front, back, left and right, 1 body height
   away with the lens at hip height (`src/posture/`, `postureCamera`).
   Sagittal posture features use the side views, frontal features the front/back views.
+- Optional scapula step (Tony, 2026-10-10; `postureScreen.scapula`, `src/posture/scapula.ts`): upper back bare, with
+  the user's consent (warning text in `scapula-predictions.json`). MediaPipe has no scapula points, so spine roots and
+  inferior angles are tapped on the back photo, and winging / anterior tilt are graded from a back-view arm-raise clip.
+  `predictFromScapula` maps findings to expected Tier 1 error codes via Tony's table (empty until he writes it).
 - Metrics are computed in 3D world coordinates, so they do not depend on the view; the view changes which
   landmarks are visible and how much depth noise each metric picks up.
 - `CameraView` in @optimass/types has no oblique value yet, so 45° clips are tagged "sagittal" (TODO in camera.ts).

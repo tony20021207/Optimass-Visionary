@@ -1,0 +1,13 @@
+{
+  "$comment": "Tony's table (2026-10-10): scapula findings from the posture check -> movement errors to expect. EMPTY until Tony writes it; Claude does not author clinical predictions. Each rule: {id, feature (see SCAPULA_FEATURES in scapula.ts), min and/or max (fires outside the range), finding, predicts: [Tier 1 error codes], exercises?: [exercise ids], why?, placeholder?}. Example shape only, not a clinical value: {\"id\": \"left_winging\", \"feature\": \"left_winging_grade\", \"max\": 0, \"finding\": \"Left scapular winging on arm raise\", \"predicts\": [\"shoulder_elevation\"], \"exercises\": [\"lat_pulldown\"]}. Grades: 0 normal, 1 subtle, 2 obvious.",
+  "version": "0.1.0",
+  "reviewedBy": null,
+  "consent": {
+    "title": "Shoulder blade check (optional)",
+    "warning": "This step needs a clear view of your shoulder blades: take your shirt off or wear a sports bra or a top that leaves your upper back bare. You'll take one photo from behind and a short video of you raising and lowering your arms. Do it somewhere private, and only if you're comfortable.",
+    "kept": "The photo and video are analysed to measure your shoulder blades. Only those measurements are saved; the photo and video are deleted unless you choose to keep them.",
+    "decline": "You can skip this step. Your workout analysis still runs, just without shoulder-blade predictions.",
+    "placeholder": true
+  },
+  "predictions": []
+}

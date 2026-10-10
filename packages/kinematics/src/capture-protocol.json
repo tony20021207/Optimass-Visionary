@@ -49,6 +49,18 @@
     "distanceNote": "Camera exactly 1 x the user's height away (e.g. 1.75 m for a 1.75 m user), measured floor-to-floor from the lens to the user's feet. A known distance and height let us convert image measurements to real units and correct perspective.",
     "cameraHeight": "hip",
     "cameraHeightNote": "Lens at the user's hip height (mid-body), camera level. Centring the lens on the body keeps head and feet at similar angles to it, so perspective distortion is lowest and the whole body fits at 1 body height with a normal (1x) phone lens. Shoulder height at this distance cuts off the feet.",
-    "stanceNote": "Relaxed standing, feet hip-width, arms by the sides, looking straight ahead."
+    "stanceNote": "Relaxed standing, feet hip-width, arms by the sides, looking straight ahead.",
+    "scapula": {
+      "label": "Optional shoulder-blade step (Tony, 2026-10-10), after the 4 views, only with the user's consent (see consent in posture/scapula-predictions.json)",
+      "clothing": "Upper back bare: shirt off or a sports bra",
+      "still": "Back view, same placement as the posterior posture view (1 body height away, lens at hip height, level), arms relaxed. Spine roots and inferior angles are tapped on this photo.",
+      "dynamic": {
+        "view": "Back view, same placement",
+        "movement": "Raise both arms forward to overhead and lower them, thumbs up, slowly",
+        "reps": 5,
+        "note": "Graded for winging and anterior tilt per side (normal / subtle / obvious). Reps and any added weight are PLACEHOLDERS for Tony to set."
+      },
+      "privacy": "Analyse on the phone where possible; keep only the measurements unless the user opts in to keep the media."
+    }
   }
 }

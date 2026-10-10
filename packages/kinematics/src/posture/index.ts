@@ -4,6 +4,7 @@ import type { PostureCapture } from "./synth";
 
 export * from "./evaluate";
 export * from "./metrics";
+export * from "./scapula";
 export * from "./synth";
 
 export interface PostureReport {
