@@ -79,4 +79,18 @@ describe("coachSet (lat pulldown)", () => {
   it("rejects an invalid coaching file", () => {
     expect(() => parseCoachingTable("version: x\nexerciseId: lat_pulldown\n")).toThrow(/invalid coaching table/);
   });
+
+  it("reads the pulldown's three equal-time phases", () => {
+    expect(coaching.phases.map((p) => [p.id, p.endsAt])).toEqual([
+      ["first_third", 0.3333],
+      ["middle_third", 0.6667],
+      ["last_third", 1],
+    ]);
+  });
+
+  it("rejects phases that go backwards or stop short of the end", () => {
+    const text = read("coaching/lat_pulldown.yaml");
+    expect(() => parseCoachingTable(text.replace("endsAt: 0.6667", "endsAt: 0.2"))).toThrow(/must end after/);
+    expect(() => parseCoachingTable(text.replace("endsAt: 1\n", "endsAt: 0.9\n"))).toThrow(/last phase must end at 1/);
+  });
 });

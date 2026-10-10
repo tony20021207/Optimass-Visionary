@@ -47,7 +47,7 @@ export function SetSession({
 
   const finishSet = (feedback?: SetFeedback) => {
     if (!video) return;
-    const { findings } = analysis ?? analyzeSetDemo(sets.length, video.durationSec);
+    const { findings } = analysis ?? analyzeSetDemo(sets.length, coaching.phases, video.durationSec);
     const result = coachSet({ findings, feedback: feedback ?? {}, coaching, tier2 });
     setSets((prev) => [...prev, { videoUrl: video.url, fileName: video.name, feedback, coaching: result }]);
     setVideo(null);
@@ -79,7 +79,7 @@ export function SetSession({
           onSample={sampleVideoUrl ? () => setVideo({ url: sampleVideoUrl, name: "sample" }) : undefined}
           onDuration={(durationSec) => setVideo((v) => (v ? { ...v, durationSec } : v))}
           onNext={() => {
-            setAnalysis(analyzeSetDemo(sets.length, video?.durationSec));
+            setAnalysis(analyzeSetDemo(sets.length, coaching.phases, video?.durationSec));
             setStep("feedback");
           }}
           onSkipFeedback={() => finishSet()}

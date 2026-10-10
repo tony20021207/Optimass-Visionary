@@ -7,6 +7,22 @@
 version: "0.1.0-placeholder"
 exerciseId: lat_pulldown
 
+# Phases the lifter reviews their best rep in: mark muscles, then pain, then the next phase.
+# endsAt = where the phase ends, as a share of the pull's duration (the return replays them in reverse).
+# Tony 2026-10-10: the pulldown is close to a single-joint movement (shoulder extension/adduction, elbow
+# flexion as a synergist), so three phases with equal time. Exercises with more complex joint action
+# (e.g. the deadlift) set their own break points here.
+phases:
+  - id: first_third
+    label: First third of the pull
+    endsAt: 0.3333
+  - id: middle_third
+    label: Middle third
+    endsAt: 0.6667
+  - id: last_third
+    label: Last third, into the bottom
+    endsAt: 1
+
 # Question 1 and 2: "Do you feel the muscle working here?" and "How much (1-10)?"
 # role: target   = we want them to feel it; a low rating earns `lowCues`.
 # role: watch    = feeling it a lot usually means another muscle is taking over; a high rating earns `highCues`.

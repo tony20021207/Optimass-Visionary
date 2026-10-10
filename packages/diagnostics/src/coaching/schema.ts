@@ -5,9 +5,28 @@ const Cues = z.array(z.string().min(1)).default([]);
 const Rating = z.number().int().min(1).max(10);
 
 /** Shape of content/rules/coaching/<exercise>.yaml. Muscles, thresholds and cues are authored by Tony. */
+/**
+ * Phases the lifter reviews a rep in, in order. `endsAt` is where each phase ends, as a share (0-1] of the
+ * working stroke's duration (for the pulldown, the pull down). The return passes through the same phases
+ * in reverse. The last phase must end at 1.
+ */
+const Phases = z
+  .array(z.object({ id: Slug, label: z.string().min(1), endsAt: z.number().gt(0).max(1) }))
+  .min(1)
+  .superRefine((phases, ctx) => {
+    phases.forEach((p, i) => {
+      if (i > 0 && p.endsAt <= phases[i - 1]!.endsAt) ctx.addIssue({ code: "custom", message: `phase ${p.id} must end after the one before it` });
+    });
+    if (phases.at(-1)!.endsAt !== 1) ctx.addIssue({ code: "custom", message: "the last phase must end at 1" });
+    if (new Set(phases.map((p) => p.id)).size !== phases.length) ctx.addIssue({ code: "custom", message: "phase ids must be unique" });
+  });
+
+export type CoachingPhase = z.infer<typeof Phases>[number];
+
 export const CoachingTable = z.object({
   version: z.string().min(1),
   exerciseId: Slug,
+  phases: Phases,
   feel: z.object({
     lowRating: Rating,
     highRating: Rating,
@@ -36,13 +55,6 @@ export type CoachingTable = z.infer<typeof CoachingTable>;
 /** Where on a paused frame the lifter pointed, as 0..1 fractions of the video frame's width and height. */
 const FramePoint = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
 
-/**
- * Thirds of the pull's range of motion: top to 1/3, 1/3 to 2/3, 2/3 to bottom. Same boundaries as Tier 1's
- * keyframes (top, 1/3, 2/3, bottom). Each third covers the pull through it and the return through it.
- */
-export const RomPhase = z.enum(["first_third", "middle_third", "last_third"]);
-export type RomPhase = z.infer<typeof RomPhase>;
-
 const MuscleMark = z.object({
   rating: Rating,
   /** Where they tapped on the video, and when. */
@@ -51,8 +63,8 @@ const MuscleMark = z.object({
 });
 
 /**
- * What the lifter tells us after a set. They review one rep (the one closest to good form) a third at a time,
- * marking muscles they felt working and then any discomfort in each third.
+ * What the lifter tells us after a set. They review one rep (the one closest to good form) a phase at a time,
+ * marking muscles they felt working and then any discomfort in each phase.
  */
 export const SetFeedback = z.object({
   /** The rep the lifter reviewed (the one closest to good form), in seconds into the set video. */
@@ -64,7 +76,8 @@ export const SetFeedback = z.object({
         felt: z.boolean(),
         /** Strongest rating across the phases. */
         rating: Rating.optional(),
-        byPhase: z.partialRecord(RomPhase, MuscleMark).optional(),
+        /** Keyed by the phase ids in the coaching file. */
+        byPhase: z.record(Slug, MuscleMark).optional(),
       }),
     )
     .default({}),
@@ -75,7 +88,8 @@ export const SetFeedback = z.object({
         /** Seconds into the set video. */
         timeSec: z.number().nonnegative(),
         point: FramePoint.optional(),
-        phase: RomPhase.optional(),
+        /** Phase id from the coaching file. */
+        phase: Slug.optional(),
         areaId: Slug.optional(),
         note: z.string().default(""),
       }),

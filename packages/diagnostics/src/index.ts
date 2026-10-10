@@ -9,7 +9,8 @@ export type { Tier2Rules } from "./tier2/infer";
 export { Tier2Cause, Tier2Pattern, Tier2Table } from "./tier2/schema";
 export { coachSet, formatTime, parseCoachingTable } from "./coaching/coach";
 export type { Cue, CueKind, SetCoaching } from "./coaching/coach";
-export { CoachingTable, RomPhase, SetFeedback } from "./coaching/schema";
+export { CoachingTable, SetFeedback } from "./coaching/schema";
+export type { CoachingPhase } from "./coaching/schema";
 export { pickReviewRep } from "./coaching/pick-rep";
 export type { RepWindow } from "./coaching/pick-rep";
 /** Hand-written pulldown findings, used as stand-in Tier 1 output until real clips are analysed. */

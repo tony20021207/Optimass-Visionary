@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button, cn } from "@optimass/ui";
-import type { CoachingTable, RomPhase, SetFeedback } from "@optimass/diagnostics";
+import type { CoachingTable, SetFeedback } from "@optimass/diagnostics";
 import { ActionBar } from "./controls";
 import type { PhaseClip } from "./demo-analysis";
 import { DiscomfortMarker } from "./DiscomfortMarker";
@@ -11,8 +11,8 @@ import { MuscleMarker } from "./MuscleMarker";
 import type { MuscleMark } from "./MuscleMarker";
 import type { RepClip } from "./RepVideo";
 
-/** Marks are kept per phase; "whole" is used when there's no chosen rep and the lifter reviews the whole set. */
-type PhaseKey = RomPhase | "whole";
+/** Marks are kept per phase id; "whole" is used when there's no chosen rep and the lifter reviews the whole set. */
+type PhaseKey = string;
 
 interface Part {
   key: PhaseKey;
@@ -38,7 +38,7 @@ export function FeedbackStep({
   videoUrl: string;
   /** The rep closest to good form, or null to review the whole set. */
   rep: RepClip | null;
-  /** That rep cut into thirds of the range; reviewed one at a time, muscles then pain in each. */
+  /** That rep cut into the exercise's phases; reviewed one at a time, muscles then pain in each. */
   phaseClips: PhaseClip[] | null;
   repCount: number;
   coaching: CoachingTable;
@@ -121,7 +121,11 @@ export function FeedbackStep({
             />
           ))}
         </div>
-        {part.clip && <p className="mt-3 text-sm font-semibold text-brand-700">{PART_TITLE[part.clip.phase]}</p>}
+        {part.clip && (
+          <p className="mt-3 text-sm font-semibold text-brand-700">
+            Part {part.clip.number} · {part.clip.title}
+          </p>
+        )}
         <h2 id="feedback-question" className={cn("text-lg font-semibold text-ink", part.clip ? "mt-0.5" : "mt-3")}>
           {step.kind === "muscles" ? "Which muscles were working?" : "Any pain or discomfort?"}
         </h2>
@@ -132,7 +136,7 @@ export function FeedbackStep({
           <p className="text-sm text-ink-muted">
             {stepIndex === 0 && rep ? (
               <>
-                This is rep {rep.repIndex + 1} of {repCount}, your closest to good form, shown a third at a time. Each clip loops through that
+                This is rep {rep.repIndex + 1} of {repCount}, your closest to good form, shown in {parts.length} parts. Each clip loops through that
                 part of the pull and back.{" "}
               </>
             ) : null}
@@ -183,9 +187,3 @@ export function FeedbackStep({
     </section>
   );
 }
-
-const PART_TITLE: Record<RomPhase, string> = {
-  first_third: "Part 1 · first third of the pull",
-  middle_third: "Part 2 · middle third",
-  last_third: "Part 3 · last third, into the bottom",
-};
