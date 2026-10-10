@@ -94,6 +94,13 @@ function landmarkTracks(seq: PoseSequence, window: number): Record<PoseLandmarkN
  * - `grip_width_x_shoulder`: wrist-to-wrist distance ÷ shoulder-to-shoulder distance (hand spacing on the bar).
  * - `wrist_height_diff_m`: left wrist height minus right (bar tilt).
  * - `bar_tilt_deg`: the wrist-to-wrist line's angle from horizontal (+ = left hand higher); bar tilt independent of grip width.
+ * - `*_shoulder_rotation_deg`: humeral rotation (+ = external, − = internal), read from where the bent forearm points
+ *   around the upper arm: 0 = forearm in the vertical plane through the upper arm, pointing up along the trunk (same
+ *   zero as the simulation's pulldownArmOnBar). NaN while the elbow is nearly straight or the arm nearly vertical, where
+ *   the forearm can't show it.
+ * - `shoulder_forward_of_hip_ear_m`: shoulder midpoint ahead of the line from the hip midpoint to the ear midpoint
+ *   (+ = in front). The ears ride on the spine, not the shoulder blades, so this grows when the shoulders protract.
+ *   Rough: a forward head moves the line itself.
  * - `trunk_length_m`, `arm_length_m`: hip midpoint to shoulder midpoint, and shoulder → elbow → wrist (mean of both
  *   sides), for judging distances in proportion to the lifter.
  * - `elbow_flexion_diff_deg`: left minus right elbow flexion.
@@ -164,7 +171,21 @@ export function pulldownSeries(seq: PoseSequence, options: MetricOptions = {}): 
       put(`${side}_elbow_flexion_deg`, i, 180 - jointAngleDeg(shoulder, elbow, wrist));
       put(`${side}_humerothoracic_elevation_deg`, i, angleBetweenDeg(sub(elbow, shoulder), trunkDown));
       put(`${side}_shoulder_ear_gap_ratio`, i, dist(p(`${side}_ear`), shoulder) / shoulderWidth);
+      // Humeral rotation from the forearm around the upper arm (closed chain, Tony 2026-10-10).
+      const hu = unit(humerus);
+      const zero = rejectFrom(scale(down, -1), hu);
+      const fa = rejectFrom(sub(wrist, elbow), hu);
+      const usable = norm(zero) > 0.12 && norm(fa) > 0.4 * dist(elbow, wrist);
+      const sign = side === "left" ? -1 : 1;
+      put(
+        `${side}_shoulder_rotation_deg`,
+        i,
+        usable ? Math.atan2(dot(cross(unit(zero), unit(fa)), scale(hu, sign)), dot(unit(zero), unit(fa))) * RAD_TO_DEG : Number.NaN,
+      );
     }
+    const earMid = mid(p("left_ear"), p("right_ear"));
+    const hipEar = sub(earMid, hipMid);
+    put("shoulder_forward_of_hip_ear_m", i, dot(sub(shoulderMid, hipMid), unit(rejectFrom(forward, hipEar))));
     put("trunk_lean_deg", i, Math.atan2(-dot(trunk, forward), dot(trunk, UP)) * RAD_TO_DEG);
     put("hip_flexion_deg", i, 180 - jointAngleDeg(shoulderMid, hipMid, kneeMid));
     const trunkForward = unit(rejectFrom(forward, trunk));

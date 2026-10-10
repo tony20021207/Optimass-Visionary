@@ -119,6 +119,38 @@
       "placeholder": true
     },
     {
+      "id": "elbow_follows_shoulder",
+      "feature": "elbow_lead_first_third",
+      "max": 0.28,
+      "fault": "early_elbow_flexion",
+      "why": "Elbow flexion should not run ahead of shoulder extension + adduction in the first third of the pull (Tier 2 sheet, error 1: biceps start the pull). Synthetic: good ~0.15-0.19 wide (~0.05-0.08 neutral bar), elbow leading ~0.4.",
+      "placeholder": true
+    },
+    {
+      "id": "shoulders_stay_back",
+      "feature": "shoulder_protraction_x_trunk",
+      "max": 0.04,
+      "fault": "scapular_protraction",
+      "why": "The shoulders should not roll forward (scapular protraction) as the arms finish (Tier 2 sheet, error 5). In trunk lengths. Rough: from the hip-to-ear line, so a forward head shifts it. Synthetic: good ≤0.03, protracting ~0.08-0.1.",
+      "placeholder": true
+    },
+    {
+      "id": "no_lockout_at_top",
+      "feature": "elbow_flexion_top_deg",
+      "min": 3,
+      "fault": "elbow_lockout_top",
+      "why": "Keep a slight elbow bend at the top instead of locking out (Tier 2 sheet, error 6; Tony's baseline ~11°). Video can't read hyperextension, so a locked or hyperextended elbow reads near 0. Synthetic: good ≥6 (noise), locked ~0-1.",
+      "placeholder": true
+    },
+    {
+      "id": "limited_internal_rotation_at_bottom",
+      "feature": "shoulder_rotation_bottom_deg",
+      "min": -66,
+      "fault": "shoulder_internal_rotation",
+      "why": "Shoulder internal rotation at the bottom should not go past the baseline's (Tier 2 sheet, error 8). Tony's wide baseline already sits ~52-56° internally rotated at the bottom (elbows flared on the bar). Synthetic: flaring further ~-77.",
+      "placeholder": true
+    },
+    {
       "id": "controlled_eccentric",
       "feature": "eccentric_s",
       "min": 1.0,
@@ -196,12 +228,14 @@
       "full_stretch_at_top": { "max": 18, "why": "PLACEHOLDER set just past Tony's narrow underhand baseline (2026-10-10) over 4 camera angles and 3 noise seeds (top elbow bend up to ~16°)." },
       "pull_along_line": { "min": 2, "max": 9, "why": "PLACEHOLDER set just past Tony's narrow underhand baseline (2026-10-10) over 4 camera angles and 3 noise seeds: the close grip pulls straighter down (~4.5-6° off vertical)." },
       "forearms_on_line_front": { "max": 21, "why": "PLACEHOLDER set just past Tony's narrow underhand baseline (2026-10-10) over 4 camera angles and 3 noise seeds (up to ~19°, from the elbows swinging out over the last ~15% of the pull; open question to Tony)." },
+      "limited_internal_rotation_at_bottom": { "min": -90, "why": "PLACEHOLDER set past Tony's narrow underhand baseline (2026-10-10): ~66° internal at the bottom, read ~65-78° because the upper arm is nearly vertical there (12° elevation), which makes the reading noisy." },
       "no_yank": { "max": 15.9, "why": "PLACEHOLDER set just past Tony's narrow underhand baseline (2026-10-10) over 4 camera angles and 3 noise seeds: 9 m/s² on the ~0.57 m arm (good rep up to ~7.7 m/s²; momentum swing ~12, yank ~15)." }
     },
     "neutral_bar": {
       "full_stretch_at_top": { "max": 19, "why": "PLACEHOLDER set just past Tony's neutral bar baseline (2026-10-10, ~18:20Z) over 5 camera angles and 3 noise seeds (top elbow bend 16.9°, read up to ~18°)." },
       "elbows_reach_trunk_line": { "min": -15, "why": "PLACEHOLDER set just past Tony's neutral bar baseline (2026-10-10): with the forearms on the cable the elbows stop ~12-14° in front of the trunk line. A partial pull (~-32°) still fails." },
       "pull_along_line": { "min": 6, "max": 12, "why": "PLACEHOLDER set around Tony's neutral bar baseline (2026-10-10): the bar comes down ~8-10° off vertical; elbows drifting forward (~19°) still fails." },
+      "limited_internal_rotation_at_bottom": { "min": -46, "why": "PLACEHOLDER set past Tony's neutral bar baseline (2026-10-10): ~30° internal at the bottom, read ~30-38°." },
       "no_yank": { "max": 14.1, "why": "PLACEHOLDER set just past Tony's neutral bar baseline (2026-10-10) with his pacing on: 8 m/s² on the ~0.57 m arm (good rep up to ~7.2 m/s²; yank ~10.4-11.5)." }
     }
   }

@@ -30,6 +30,9 @@ export const PULLDOWN_FEATURES = {
   shoulder_narrowing_ratio: "Shoulder blade retraction proxy: how much the shoulder-to-shoulder distance shrinks from the top to the bottom, as a fraction of the top width",
   head_forward_change_m: "How far the ears move forward of the trunk line during the rep (m)",
   head_forward_change_x_trunk: "How far the ears move forward of the trunk line during the rep, in trunk lengths (hip midpoint to shoulder midpoint)",
+  elbow_lead_first_third: "Elbow flexion leading the pull: at one third of the pull's time, the share of the elbow's flexion already done minus the share of the shoulder's extension + adduction already done (+ = elbow ahead of the shoulder; mean of both arms)",
+  shoulder_protraction_x_trunk: "Scapular protraction proxy: how far the shoulders move forward of the hip-to-ear line from the start of the pull to the bottom, in trunk lengths (+ = rolling forward). Rough: a forward head shifts the line",
+  shoulder_rotation_bottom_deg: "Shoulder rotation at the bottom, read from the bent forearm around the upper arm (+ = external, − = internal; median of both arms over the bottom pause)",
   concentric_s: "Time to pull the bar down (5%–95% of travel)",
   bottom_pause_s: "Time held at the bottom",
   eccentric_s: "Time to return the bar to the top (95%–5% of travel)",
@@ -172,6 +175,15 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
   const ext = performed("shoulder_extension_cum_deg");
   const add = performed("shoulder_adduction_cum_deg");
 
+  // Early elbow flexion: progress of each joint at a third of the pull's time (Tier 2 sheet, error 1).
+  const third = cFrom + Math.round((cTo - cFrom) / 3);
+  const share = (track: number[], at: number) => (track[at]! - track[cFrom]!) / (track[bottomFrame]! - track[cFrom]!);
+  const lead = (side: "left" | "right") => {
+    const sh = series.metrics[`${side}_shoulder_extension_cum_deg`]!.map((x, i) => x + series.metrics[`${side}_shoulder_adduction_cum_deg`]![i]!);
+    return share(series.metrics[`${side}_elbow_flexion_deg`]!, third) - share(sh, third);
+  };
+  const protraction = series.metrics.shoulder_forward_of_hip_ear_m!;
+
   return {
     elbow_flexion_top_deg: both(min, "elbow_flexion_deg"),
     elbow_flexion_peak_deg: both(max, "elbow_flexion_deg"),
@@ -203,6 +215,11 @@ export function pulldownFeatures(series: KinematicSeries, rep: RepSegment): Pull
     shoulder_narrowing_ratio: (series.metrics.shoulder_width_m![rep.startFrame]! - series.metrics.shoulder_width_m![bottomFrame]!) / series.metrics.shoulder_width_m![rep.startFrame]!,
     head_forward_change_m: max(m("head_forward_m")) - (series.metrics.head_forward_m?.[rep.startFrame] ?? Number.NaN),
     head_forward_change_x_trunk: (max(m("head_forward_m")) - (series.metrics.head_forward_m?.[rep.startFrame] ?? Number.NaN)) / median(m("trunk_length_m")),
+    elbow_lead_first_third: mean([lead("left"), lead("right")]),
+    shoulder_protraction_x_trunk: (max(protraction.slice(cFrom, bottomFrame + 1)) - protraction[cFrom]!) / median(m("trunk_length_m")),
+    shoulder_rotation_bottom_deg: median(
+      [...m("left_shoulder_rotation_deg", frameAt(bottom.startMs), frameAt(bottom.endMs)), ...m("right_shoulder_rotation_deg", frameAt(bottom.startMs), frameAt(bottom.endMs))],
+    ),
     concentric_s: seconds(concentric),
     bottom_pause_s: seconds(bottom),
     eccentric_s: seconds(phase(rep, "eccentric")),

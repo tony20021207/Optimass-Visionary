@@ -141,16 +141,24 @@ describe("placeholder parameters vs synthetic reps", () => {
     ["partial_rom", ["incomplete_top_rom", "incomplete_bottom_rom"]],
     ["shrug", ["shoulder_elevation"]],
     ["fast_eccentric", ["fast_eccentric"]],
-    // Rotating the whole arm back swings the elbows in behind the hands, so the forearms leave the line of pull too.
-    ["over_pull", ["excessive_shoulder_extension", "forearm_off_line"]],
-    // Close grip, elbows in front: the forearm cannot stay on the line of pull.
-    ["elbows_forward", ["forearm_off_line"]],
+    // Rotating the whole arm back swings the elbows in behind the hands, so the forearms leave the line of pull too, and
+    // with the hands on the bar the lower plane turns the shoulders further into internal rotation.
+    ["over_pull", ["excessive_shoulder_extension", "forearm_off_line", "shoulder_internal_rotation"]],
+    // Close grip, elbows in front: the forearm cannot stay on the line of pull, and the close grip on an overhand bar
+    // turns the shoulders past the wide baseline's internal rotation.
+    ["elbows_forward", ["forearm_off_line", "shoulder_internal_rotation"]],
     ["asymmetric", ["asymmetric_pull"]],
     ["forward_head", ["forward_head"]],
     ["yank", ["yanking"]],
     // Slowing mid-pull, then speeding up again to finish in time: a sticking point, and the re-acceleration reads as a yank.
     ["sticking_point", ["uneven_pacing", "yanking"]],
     ["inconsistent_tempo", ["inconsistent_tempo"]],
+    // Tier 2 sheet errors (2026-10-10). Hands stay on the bar, so each also bends the bar path or the forearm off the
+    // line of pull (knock-on effects, not separate faults).
+    ["early_elbow_flexion", ["early_elbow_flexion", "bar_path_off_line", "forearm_off_line", "yanking"]],
+    ["scapular_protraction", ["scapular_protraction", "bar_path_off_line"]],
+    ["elbow_lockout_top", ["elbow_lockout_top", "bar_path_off_line", "forearm_off_line", "yanking"]],
+    ["shoulder_internal_rotation", ["shoulder_internal_rotation", "excessive_shoulder_extension", "forearm_off_line", "yanking"]],
   ] as const)("%s trips only its own checks: %j", (variant, faults) => {
     expect([...failedFaults(variant)].sort()).toEqual([...faults].sort());
   });

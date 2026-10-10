@@ -271,6 +271,16 @@ export const PULLDOWN_FAULTS = {
   sticking_point: { set: { pacing: { concentric: [0.1, 0.8, 0.1], eccentric: [0.3, 0.4, 0.3] }, seed: 11 } },
   /** Reps get slower through the set, as with fatigue: the last rep takes 60% longer than the first. */
   inconsistent_tempo: { set: { tempoDrift: 0.6, seed: 12 } },
+  // Four joint-function errors from the Tier 2 sheet (reviews/pulldown-overhand-form-errors.md), added 2026-10-10 so Tony
+  // can see them before setting limits. PLACEHOLDER sizes.
+  /** Elbow flexion leads the pull: the elbows bend early while the shoulders have barely started. */
+  early_elbow_flexion: { set: { seed: 13 }, add: { elbow_flexion: [0, 30, 10, 0] } },
+  /** The shoulders roll forward (scapular protraction) as the arms finish. */
+  scapular_protraction: { set: { seed: 14 }, add: { scapular_protraction: [0, 3, 10, 18] } },
+  /** Elbows lock straight at the top instead of keeping a slight bend. */
+  elbow_lockout_top: { set: { seed: 15 }, add: { elbow_flexion: [-11, 0, 0, 0] } },
+  /** Elbows flare further out at the bottom (lower plane of elevation), turning the shoulders into more internal rotation on the bar. */
+  shoulder_internal_rotation: { set: { seed: 16 }, add: { shoulder_plane_of_elevation: [0, 0, -5, -20] } },
 } satisfies Record<string, PulldownFault>;
 export type PulldownVariant = keyof typeof PULLDOWN_FAULTS;
 
