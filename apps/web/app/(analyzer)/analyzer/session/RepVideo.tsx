@@ -15,6 +15,13 @@ export interface RepClip {
   endSec: number;
 }
 
+/** What the player is held to: one or more stretches of the video, played in order on a loop. */
+export interface VideoClip {
+  /** Spoken name for the player, e.g. "Rep 4, first third". */
+  label: string;
+  windows: { startSec: number; endSec: number }[];
+}
+
 export interface VideoPin {
   id: string;
   timeSec: number;
@@ -28,13 +35,13 @@ export interface VideoPin {
 const PIN_WINDOW_SEC = 0.75;
 
 /**
- * The set video, held to one rep when `rep` is given: it starts at the rep, loops back at its end, and
- * scrubbing outside the rep snaps back into it. While `placing`, a tap on the frame calls onPlace.
+ * The set video, held to `clip` when given: it plays the clip's windows in order and loops, and scrubbing
+ * outside them snaps back to the start. While `placing`, a tap on the frame calls onPlace.
  */
 export function RepVideo({
   videoRef,
   url,
-  rep,
+  clip,
   pins,
   placing,
   placingLabel,
@@ -43,14 +50,14 @@ export function RepVideo({
 }: {
   videoRef: RefObject<HTMLVideoElement | null>;
   url: string;
-  rep: RepClip | null;
+  clip: VideoClip | null;
   pins: VideoPin[];
   placing: boolean;
   placingLabel: string;
   onPlace: (point: FramePoint | undefined, timeSec: number) => void;
   onCancelPlacing: () => void;
 }) {
-  const [now, setNow] = useState(rep?.startSec ?? 0);
+  const [now, setNow] = useState(clip?.windows[0]?.startSec ?? 0);
   const [size, setSize] = useState<VideoSize | null>(null);
 
   // Pins are drawn in element pixels, so track the player's size and the frame's size.
@@ -67,21 +74,23 @@ export function RepVideo({
     };
   }, [videoRef]);
 
-  // Jump to the rep when it changes (or once the video can seek).
+  // Jump to the clip when it changes (or once the video can seek).
+  const firstStart = clip?.windows[0]?.startSec;
   useEffect(() => {
     const v = videoRef.current;
-    if (!v || !rep) return;
+    if (!v || firstStart === undefined) return;
     const toStart = () => {
-      v.currentTime = rep.startSec;
+      v.currentTime = firstStart;
     };
     if (v.readyState >= 1) toStart();
     else v.addEventListener("loadedmetadata", toStart, { once: true });
     return () => v.removeEventListener("loadedmetadata", toStart);
-  }, [videoRef, rep]);
+  }, [videoRef, firstStart]);
 
-  const keepInRep = (v: HTMLVideoElement) => {
-    if (rep && (v.currentTime < rep.startSec - 0.05 || v.currentTime >= rep.endSec)) v.currentTime = rep.startSec;
-    setNow(v.currentTime);
+  const keepInClip = (v: HTMLVideoElement) => {
+    const to = clipTime(clip?.windows ?? [], v.currentTime);
+    if (to !== v.currentTime) v.currentTime = to;
+    setNow(to);
   };
 
   const place = (e: MouseEvent<HTMLDivElement>) => {
@@ -102,10 +111,10 @@ export function RepVideo({
         controls={!placing}
         playsInline
         muted
-        className="max-h-[60vh] w-full rounded-lg bg-black"
-        onTimeUpdate={(e) => keepInRep(e.currentTarget)}
-        onSeeked={(e) => keepInRep(e.currentTarget)}
-        aria-label={rep ? `Rep ${rep.repIndex + 1} of your set` : "Your set video"}
+        className="max-h-[45vh] w-full rounded-lg bg-black"
+        onTimeUpdate={(e) => keepInClip(e.currentTarget)}
+        onSeeked={(e) => keepInClip(e.currentTarget)}
+        aria-label={clip?.label ?? "Your set video"}
       />
       {placing && (
         <div
@@ -126,6 +135,20 @@ export function RepVideo({
       ))}
     </div>
   );
+}
+
+/** Timeupdates arrive every ~250 ms, so a window counts as just finished if it ended this recently. */
+const JUST_ENDED_SEC = 0.35;
+
+/**
+ * Where the player should be for time `t`: unchanged inside a window; the next window's start just after one
+ * ends (looping to the first); the first window's start anywhere else.
+ */
+export function clipTime(windows: readonly { startSec: number; endSec: number }[], t: number): number {
+  if (windows.length === 0) return t;
+  if (windows.some((w) => t >= w.startSec - 0.05 && t < w.endSec)) return t; // seeks can land a hair early
+  const ended = windows.findIndex((w) => t >= w.endSec && t - w.endSec < JUST_ENDED_SEC);
+  return windows[ended === -1 ? 0 : (ended + 1) % windows.length]!.startSec;
 }
 
 interface VideoSize {

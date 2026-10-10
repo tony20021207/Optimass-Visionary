@@ -90,6 +90,7 @@ export function SetSession({
           setNumber={setNumber}
           videoUrl={video.url}
           rep={analysis.reviewRep}
+          phaseClips={analysis.phaseClips}
           repCount={analysis.repCount}
           coaching={coaching}
           onBack={() => setStep("film")}

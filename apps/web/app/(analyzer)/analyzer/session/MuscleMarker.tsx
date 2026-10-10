@@ -5,7 +5,7 @@ import { Button } from "@optimass/ui";
 import type { CoachingTable } from "@optimass/diagnostics";
 import { Chip, RatingSlider } from "./controls";
 import { RepVideo } from "./RepVideo";
-import type { FramePoint, RepClip } from "./RepVideo";
+import type { FramePoint, VideoClip } from "./RepVideo";
 
 export interface MuscleMark {
   rating: number;
@@ -21,13 +21,13 @@ export const DEFAULT_RATING = 5;
 /** Tap where a muscle was working on the rep, say which muscle, and how strongly. One mark per muscle. */
 export function MuscleMarker({
   videoUrl,
-  rep,
+  clip,
   muscles,
   marks,
   onChange,
 }: {
   videoUrl: string;
-  rep: RepClip | null;
+  clip: VideoClip | null;
   muscles: Muscle[];
   marks: Record<string, MuscleMark>;
   onChange: (marks: Record<string, MuscleMark>) => void;
@@ -67,7 +67,7 @@ export function MuscleMarker({
       <RepVideo
         videoRef={videoRef}
         url={videoUrl}
-        rep={rep}
+        clip={clip}
         pins={pins}
         placing={placing}
         placingLabel="Tap where you felt it working"

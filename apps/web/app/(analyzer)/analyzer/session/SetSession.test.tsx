@@ -44,11 +44,11 @@ describe("set session", () => {
     fireEvent.change(screen.getByRole("slider", { name: "How strongly did you feel Lats and teres major?" }), { target: { value: "2" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByText("· 2/10")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next: any pain?" }));
 
-    // Question 2: discomfort.
-    fireEvent.click(within(screen.getByRole("group", { name: "Any pain or discomfort?" })).getByRole("button", { name: "No" }));
-    fireEvent.click(screen.getByRole("button", { name: /see my cues/i }));
+    // Question 2: discomfort, none.
+    expect(screen.getByRole("heading", { name: "Any pain or discomfort?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "No pain, see my cues" }));
 
     expect(screen.getByText("Set 1: your feedback")).toBeTruthy();
     expect(screen.getByText("Arms don't reach full overhead extension at the top of the rep")).toBeTruthy();

@@ -5,7 +5,7 @@ import { Button } from "@optimass/ui";
 import { formatTime } from "@optimass/diagnostics";
 import type { CoachingTable } from "@optimass/diagnostics";
 import { RepVideo } from "./RepVideo";
-import type { FramePoint, RepClip } from "./RepVideo";
+import type { FramePoint, VideoClip } from "./RepVideo";
 
 export interface DiscomfortNote {
   id: string;
@@ -20,13 +20,13 @@ type Area = CoachingTable["discomfort"]["areas"][number];
 /** Pause where it hurt, tap the spot, pick an area and say how it felt. */
 export function DiscomfortMarker({
   videoUrl,
-  rep,
+  clip,
   areas,
   notes,
   onChange,
 }: {
   videoUrl: string;
-  rep: RepClip | null;
+  clip: VideoClip | null;
   areas: Area[];
   notes: DiscomfortNote[];
   onChange: (notes: DiscomfortNote[]) => void;
@@ -59,7 +59,7 @@ export function DiscomfortMarker({
       <RepVideo
         videoRef={videoRef}
         url={videoUrl}
-        rep={rep}
+        clip={clip}
         pins={pins}
         placing={placing}
         placingLabel="Tap where you felt discomfort"
