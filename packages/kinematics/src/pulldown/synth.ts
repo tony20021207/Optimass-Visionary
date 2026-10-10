@@ -7,7 +7,7 @@ import type { Skeleton } from "../body/skeleton";
 import { SYNTH_STATURE_M } from "../posture/synth";
 import { renderSequence, type Body } from "../synth-render";
 import type { JointMotionId } from "../joints/catalogue";
-import { clampToEndRange } from "../joints/end-ranges";
+import { clampToEndRange, jointLimits } from "../joints/end-ranges";
 import { add, cross, dist, dot, scale, sub, unit, v, type Vec3 } from "../vec3";
 
 export type PulldownGripType = "overhand" | "underhand" | "neutral";
@@ -863,7 +863,7 @@ export function pulldownForearmToCableDeg(p: PulldownProfile, prog: number): num
  * Elbow flexion at keyframe `k` that sets the left forearm at `targetDeg` off the cable (side view), with every other
  * joint as keyed and the hand kept on the bar. Lets Motion Lab change the shoulder or trunk at a keyframe while the
  * forearm keeps its direction (Tony, 2026-10-10): the elbow bend follows. Searches outward from the keyed bend and
- * returns the nearest solution in [0, 150]°, or the keyed value when none gets within 0.5°.
+ * returns the nearest solution within the elbow's end range, or the keyed value when none gets within 0.5°.
  */
 export function elbowFlexionHoldingForearm(p: PulldownProfile, k: number, targetDeg: number): number {
   const at = PULLDOWN_KEY_AT[k]!;
@@ -882,6 +882,7 @@ export function elbowFlexionHoldingForearm(p: PulldownProfile, k: number, target
     const { elbow, wrist } = armFromAngles(shoulder, j, rot, 1, a, b);
     return { miss: forearmToCable(p, elbow, wrist) - targetDeg, rot };
   };
+  const [elbowLo, elbowHi] = jointLimits("elbow_flexion");
   const first = solve(keyed, start.shoulderRotationDeg);
   if (!first) return keyed;
   if (Math.abs(first.miss) < 1e-3) return keyed;
@@ -889,7 +890,7 @@ export function elbowFlexionHoldingForearm(p: PulldownProfile, k: number, target
   for (const dir of [1, -1]) {
     let prevE = keyed;
     let prev = first;
-    for (let e = keyed + dir; e >= 0 && e <= 150; e += dir) {
+    for (let e = keyed + dir; e >= elbowLo && e <= elbowHi; e += dir) {
       const cur = solve(e, prev.rot);
       if (!cur) break;
       if (prev.miss * cur.miss <= 0) {

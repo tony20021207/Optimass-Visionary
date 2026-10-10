@@ -8,6 +8,6 @@
     "scapular_upward_rotation": { "min": -20, "max": 60, "why": "PLACEHOLDER: total from rest (rhythm + keyed deviation). Downward kept at −20 so Tony's narrow underhand bottom (−17) fits; textbook downward rotation from rest is smaller." },
     "shoulder_elevation": { "min": 0, "max": 180, "why": "PLACEHOLDER: arm at the side to straight overhead." },
     "shoulder_plane_of_elevation": { "min": -45, "max": 130, "why": "PLACEHOLDER: ~45° horizontal abduction behind the frontal plane to ~130° horizontal adduction across the body." },
-    "elbow_flexion": { "min": 0, "max": 150, "why": "PLACEHOLDER: full extension to ~150° active flexion (hyperextension not simulated)." }
+    "elbow_flexion": { "min": -10, "max": 150, "why": "PLACEHOLDER: ~10° hyperextension (negative = past straight, Tony 2026-10-10: the elbow must be able to go below 0) to ~150° active flexion." }
   }
 }

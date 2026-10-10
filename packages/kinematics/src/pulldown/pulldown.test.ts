@@ -403,6 +403,10 @@ describe("grip from arm lengths", () => {
       expect(j.scapular_elevation).toBeGreaterThanOrEqual(depressionMax);
     }
     expect(jointsAt(past, 1).elbow_flexion).toBe(elbowMax);
+    // The elbow can hyperextend past straight (Tony, 2026-10-10).
+    const [elbowMin] = jointLimits("elbow_flexion");
+    expect(elbowMin).toBeLessThan(0);
+    expect(jointsAt({ ...p, joints: { ...p.joints, elbow_flexion: [elbowMin, 80, 110, 120] } }, 0).elbow_flexion).toBeCloseTo(elbowMin, 6);
     // Every good-rep baseline sits inside the end ranges, so the stops never change Tony's baselines.
     for (const setup of Object.keys(PULLDOWN_SETUPS) as PulldownSetup[])
       for (const [name, keys] of Object.entries(pulldownProfileFor(setup).joints)) {
