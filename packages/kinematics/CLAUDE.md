@@ -45,6 +45,9 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
   sits on the bar at the grip width (followed continuously from the top), and the plane of elevation shifts only when no
   rotation reaches the bar (pulldownArmOnBar). Presets were fitted to the earlier model (hand within ~6 cm, same check results). Faults
   (PULLDOWN_FAULTS) add joint deltas, so they work on every variation.
+- Forearm held, elbow follows (Tony, 2026-10-10): `elbowFlexionHoldingForearm(p, k, targetDeg)` solves keyframe k's elbow
+  flexion so the left forearm sits `targetDeg` off the cable in the side view (`pulldownForearmToCableDeg`), hand kept on
+  the bar. Motion Lab's "Keep the forearm's direction" toggle uses it while another joint is dragged.
 - Lifter from the posture check (Tony, 2026-10-10): `pulldownBodyFromSkeleton(calibrateSkeleton(captures))` gives
   `profile.body` (bone lengths per side, trunk, widths); the joint keyframes then move that person's skeleton.
 - Forearms on the line of pull in the FRONT view too, over the bottom 80% of the pull (Tony, 2026-10-09): check

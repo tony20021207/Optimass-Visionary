@@ -5,6 +5,8 @@ import { calibrateSkeleton } from "../body";
 import { POSTURE_VARIANTS, synthesizePostureScreen } from "../posture";
 import {
   DEFAULT_PULLDOWN_PARAMS,
+  elbowFlexionHoldingForearm,
+  pulldownForearmToCableDeg,
   GOOD_PULLDOWN,
   pulldownCamera,
   PULLDOWN_VARIANTS,
@@ -240,6 +242,24 @@ describe("pulldown variations", () => {
       }
     },
   );
+
+  it("lowers the elbow at the bottom with the forearm held on its line: elbow flexion follows (Tony, 2026-10-10)", () => {
+    const p = { ...pulldownProfileFor("narrow_underhand"), noiseM: 0 };
+    const target = pulldownForearmToCableDeg(p, 1);
+    const elevation = p.joints.shoulder_elevation.map((x, i) => (i === 3 ? x - 15 : x));
+    const lowered = { ...p, joints: { ...p.joints, shoulder_elevation: elevation } };
+    // Left alone, the forearm tips off its line…
+    expect(Math.abs(pulldownForearmToCableDeg(lowered, 1) - target)).toBeGreaterThan(10);
+    // …the solved bend puts it back, with more elbow flexion and the hand still on the bar.
+    const bend = elbowFlexionHoldingForearm(lowered, 3, target);
+    expect(bend).toBeGreaterThan(p.joints.elbow_flexion[3]! + 5);
+    const solved = { ...lowered, joints: { ...lowered.joints, elbow_flexion: lowered.joints.elbow_flexion.map((x, i) => (i === 3 ? bend : x)) } };
+    expect(pulldownForearmToCableDeg(solved, 1)).toBeCloseTo(target, 0);
+    const b = poseAt(1, solved);
+    expect(Math.abs(b.left_wrist.x - b.right_wrist.x) / 0.4).toBeCloseTo(p.gripWidthXShoulder, 2);
+    // Unchanged when the forearm is already where it should be.
+    expect(elbowFlexionHoldingForearm(p, 3, target)).toBe(p.joints.elbow_flexion[3]);
+  });
 
   it("puts a fault on top of a variation and keeps the variation's grip", () => {
     const p = pulldownProfileFor("narrow_underhand", "fast_eccentric");

@@ -676,3 +676,78 @@ export function pullLineDegOf(p: PulldownProfile): number {
   const bottom = poseAt(1, p).left_wrist;
   return (Math.atan2(top.z - bottom.z, top.y - bottom.y) * 180) / Math.PI;
 }
+
+/** Side view: forearm pitch − cable pitch (deg) for one arm's elbow and wrist, cable from that wrist to the pulley. */
+function forearmToCable(p: PulldownProfile, elbow: Vec3, wrist: Vec3): number {
+  const cable = sub(pulleyOf(p), wrist);
+  const forearm = sub(wrist, elbow);
+  return (Math.atan2(forearm.z, forearm.y) - Math.atan2(cable.z, cable.y)) * (180 / Math.PI);
+}
+
+/**
+ * Side view: the left forearm's angle off the cable at rep progress `prog` (the same measure as Tier 1's forearm_pitch
+ * vs cable_pitch; 0 = forearm on the cable, + = wrist ahead of the cable line).
+ */
+export function pulldownForearmToCableDeg(p: PulldownProfile, prog: number): number {
+  const pose = poseAt(prog, p);
+  return forearmToCable(p, pose.left_elbow, pose.left_wrist);
+}
+
+/**
+ * Elbow flexion at keyframe `k` that sets the left forearm at `targetDeg` off the cable (side view), with every other
+ * joint as keyed and the hand kept on the bar. Lets Motion Lab change the shoulder or trunk at a keyframe while the
+ * forearm keeps its direction (Tony, 2026-10-10): the elbow bend follows. Searches outward from the keyed bend and
+ * returns the nearest solution in [0, 150]°, or the keyed value when none gets within 0.5°.
+ */
+export function elbowFlexionHoldingForearm(p: PulldownProfile, k: number, targetDeg: number): number {
+  const at = PULLDOWN_KEY_AT[k]!;
+  const keyed = p.joints.elbow_flexion[k]!;
+  const body = bodyOf(p);
+  const [a, b] = armLengths(body, 1);
+  const start = pulldownArmOnBar(p, at, "left");
+  const j0 = { ...jointsAt(p, at), shoulder_plane_of_elevation: start.shoulderPlaneOfElevationDeg };
+  // Hand on the bar at bend e, with the shoulder rotation nearest `prevRot` (the arm can't flip mid-drag).
+  const solve = (e: number, prevRot: number): { miss: number; rot: number } | undefined => {
+    const j = { ...j0, elbow_flexion: e };
+    const shoulder = shoulderAt(j, 1, body, rhythmOf(p));
+    const { roots } = rotationsOnBar(shoulder, j, 1, body, gripHalfWidth(p));
+    if (!roots.length) return undefined;
+    const rot = roots.reduce((x, y) => (Math.abs(wrapDeg(y - prevRot)) < Math.abs(wrapDeg(x - prevRot)) ? y : x));
+    const { elbow, wrist } = armFromAngles(shoulder, j, rot, 1, a, b);
+    return { miss: forearmToCable(p, elbow, wrist) - targetDeg, rot };
+  };
+  const first = solve(keyed, start.shoulderRotationDeg);
+  if (!first) return keyed;
+  if (Math.abs(first.miss) < 1e-3) return keyed;
+  let best: number | undefined;
+  for (const dir of [1, -1]) {
+    let prevE = keyed;
+    let prev = first;
+    for (let e = keyed + dir; e >= 0 && e <= 150; e += dir) {
+      const cur = solve(e, prev.rot);
+      if (!cur) break;
+      if (prev.miss * cur.miss <= 0) {
+        let lo = prevE;
+        let hi = e;
+        let loS = prev;
+        for (let i = 0; i < 20; i++) {
+          const mid = (lo + hi) / 2;
+          const m = solve(mid, loS.rot);
+          if (!m) break;
+          if (loS.miss * m.miss <= 0) hi = mid;
+          else {
+            lo = mid;
+            loS = m;
+          }
+        }
+        const root = (lo + hi) / 2;
+        const check = solve(root, loS.rot);
+        if (check && Math.abs(check.miss) < 0.5 && (best === undefined || Math.abs(root - keyed) < Math.abs(best - keyed))) best = root;
+        break;
+      }
+      prevE = e;
+      prev = cur;
+    }
+  }
+  return best ?? keyed;
+}
