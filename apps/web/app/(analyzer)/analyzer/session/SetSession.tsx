@@ -24,8 +24,11 @@ export function SetSession({
   coaching,
   tier2,
   totalSets,
+  sampleVideoUrl,
 }: {
   exerciseLabel: string;
+  /** Offers a "Use a sample video" button, for previews where recording isn't possible. */
+  sampleVideoUrl?: string;
   coaching: CoachingTable;
   tier2: Tier2Rules;
   totalSets: number;
@@ -50,14 +53,13 @@ export function SetSession({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto max-w-xl space-y-5">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-xl font-semibold text-ink">{exerciseLabel} · set session</h1>
+        <h1 className="text-xl font-semibold text-ink">{exerciseLabel}</h1>
         <SetDots total={totalSets} done={sets.length} current={step === "done" ? null : setNumber} />
       </header>
-      <p className="rounded-card border border-severity-minor bg-surface-muted px-4 py-2 text-xs text-ink-muted">
-        Preview: the video isn&apos;t analysed yet. Form errors are sample data, and every cue and cause is a placeholder
-        awaiting review.
+      <p className="rounded-lg bg-surface-muted px-3 py-2 text-xs text-ink-muted">
+        Preview: videos aren&apos;t analysed yet, so form errors are sample data. Cues and causes are placeholders.
       </p>
 
       {step === "film" && (
@@ -71,6 +73,7 @@ export function SetSession({
             objectUrls.current.push(url);
             setVideo({ url, name: file.name });
           }}
+          onSample={sampleVideoUrl ? () => setVideo({ url: sampleVideoUrl, name: "sample" }) : undefined}
           onNext={() => setStep("feedback")}
           onSkipFeedback={() => finishSet()}
         />

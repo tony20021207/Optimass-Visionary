@@ -18,6 +18,8 @@ export const CoachingTable = z.object({
           label: z.string().min(1),
           where: z.string().min(1),
           role: z.enum(["target", "watch"]),
+          /** Which drawn area of the body map lights up for this muscle (see the set session UI). */
+          region: z.enum(["lats", "rhomboids", "rear_delts", "arms", "upper_traps"]).optional(),
           lowCues: Cues,
           highCues: Cues,
         }),

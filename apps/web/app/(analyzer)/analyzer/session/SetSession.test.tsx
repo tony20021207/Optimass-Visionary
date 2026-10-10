@@ -37,14 +37,17 @@ describe("set session", () => {
     filmSet();
     fireEvent.click(screen.getByRole("button", { name: /how did it feel/i }));
 
-    const lats = screen.getByRole("group", { name: "Did you feel Lats and teres major?" });
-    fireEvent.click(within(lats).getByRole("button", { name: "Yes" }));
-    fireEvent.click(within(screen.getByRole("group", { name: "How strongly did you feel Lats and teres major?" })).getByRole("button", { name: "2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lats and teres major" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.change(screen.getByRole("slider", { name: "How strongly did you feel Lats and teres major?" }), { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(within(screen.getByRole("group", { name: "Any pain or discomfort?" })).getByRole("button", { name: "No" }));
-    fireEvent.click(screen.getByRole("button", { name: /see my form and cues/i }));
+    fireEvent.click(screen.getByRole("button", { name: /see my cues/i }));
 
     expect(screen.getByText("Set 1: your feedback")).toBeTruthy();
     expect(screen.getByText("Arms don't reach full overhead extension at the top of the rep")).toBeTruthy();
+    // Not marking an area counts as not feeling it.
+    expect(screen.getAllByText(/You didn't feel rhomboids/).length).toBeGreaterThan(0);
     expect(screen.getByText(coaching.feel.muscles[0]!.lowCues[0]!)).toBeTruthy();
     expect(screen.getAllByText(/You rated lats and teres major 2\/10/).length).toBeGreaterThan(0);
     expect(screen.queryByRole("alert")).toBeNull();
