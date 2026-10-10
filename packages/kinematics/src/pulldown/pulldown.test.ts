@@ -12,6 +12,7 @@ import {
   PULLDOWN_VARIANTS,
   analyzePulldown,
   parsePulldownParams,
+  pulldownParamsFor,
   poseAt,
   pullLineDegOf,
   PULLDOWN_SETUPS,
@@ -262,6 +263,26 @@ describe("pulldown variations", () => {
     expect(Math.abs(b.left_wrist.x - b.right_wrist.x) / 0.4).toBeCloseTo(p.gripWidthXShoulder, 2);
     // Unchanged when the forearm is already where it should be.
     expect(elbowFlexionHoldingForearm(p, 3, target)).toBe(p.joints.elbow_flexion[3]);
+  });
+
+  it("judges each grip with its own limits (Tony, 2026-10-10)", () => {
+    const wide = pulldownParamsFor(DEFAULT_PULLDOWN_PARAMS, "wide_overhand");
+    const narrow = pulldownParamsFor(DEFAULT_PULLDOWN_PARAMS, "narrow_underhand");
+    expect(wide.checks).toEqual(DEFAULT_PULLDOWN_PARAMS.checks);
+    expect(narrow.checks.find((c) => c.id === "pull_along_line")).toMatchObject({ min: 2, max: 9 });
+    for (const az of [90, 135, 180, 225]) {
+      const p = pulldownProfileFor("narrow_underhand");
+      for (const rep of analyzePulldown(synthesizePulldown(p, { camera: at(az) }), narrow).reps) {
+        expect(rep.checks.filter((c) => c.status === "fail").map((c) => c.id)).toEqual([]);
+      }
+    }
+    // The wide grip's limits still catch the narrow grip's straighter line of pull.
+    const shared = analyzePulldown(synthesizePulldown(pulldownProfileFor("narrow_underhand"), { camera: at(135) })).reps;
+    expect(shared.some((r) => r.checks.find((c) => c.id === "pull_along_line")!.status === "fail")).toBe(true);
+    // null removes a limit; an unknown check is refused.
+    const raw = { ...DEFAULT_PULLDOWN_PARAMS, variations: { x: { no_yank: { max: null } } } };
+    expect(pulldownParamsFor(parsePulldownParams(raw), "x").checks.find((c) => c.id === "no_yank")!.max).toBeUndefined();
+    expect(() => parsePulldownParams({ ...raw, variations: { x: { nope: { max: 1 } } } })).toThrow(/unknown check/);
   });
 
   it("puts a fault on top of a variation and keeps the variation's grip", () => {

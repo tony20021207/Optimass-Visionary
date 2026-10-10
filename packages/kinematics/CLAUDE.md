@@ -45,6 +45,9 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
   sits on the bar at the grip width (followed continuously from the top), and the plane of elevation shifts only when no
   rotation reaches the bar (pulldownArmOnBar). Presets were fitted to the earlier model (hand within ~6 cm, same check results). Faults
   (PULLDOWN_FAULTS) add joint deltas, so they work on every variation.
+- Per-grip check limits (Tony, 2026-10-10): `variations` in good-pulldown.params.json overrides a check's min/max for
+  one PULLDOWN_SETUPS id (null removes a limit); `pulldownParamsFor(params, setup)` merges them. narrow_underhand has
+  PLACEHOLDER limits set just past Tony's 16:45Z baseline. Callers pick the variation; analyzePulldown does not guess it.
 - Forearm held, elbow follows (Tony, 2026-10-10): `elbowFlexionHoldingForearm(p, k, targetDeg)` solves keyframe k's elbow
   flexion so the left forearm sits `targetDeg` off the cable in the side view (`pulldownForearmToCableDeg`), hand kept on
   the bar. Motion Lab's "Keep the forearm's direction" toggle uses it while another joint is dragged.

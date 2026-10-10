@@ -12,11 +12,23 @@ export interface PulldownCheck {
   placeholder?: boolean;
 }
 
+/** One variation's change to a check's limits: a number replaces the limit, null removes it, absent keeps it. */
+export interface PulldownLimitOverride {
+  min?: number | null;
+  max?: number | null;
+  why?: string;
+}
+
 export interface PulldownParams {
   exerciseId: string;
   version: string;
   reviewedBy: string | null;
   checks: PulldownCheck[];
+  /**
+   * Per-variation limits (Tony, 2026-10-10): close grips move differently by design, so a variation (PULLDOWN_SETUPS id)
+   * can change a check's limits. Checks it doesn't name keep the shared limits. Read through pulldownParamsFor.
+   */
+  variations?: Record<string, Record<string, PulldownLimitOverride>>;
 }
 
 export type CheckStatus = "pass" | "fail" | "info";
@@ -47,10 +59,39 @@ export function parsePulldownParams(raw: unknown): PulldownParams {
     }
     if (c.min !== undefined && c.max !== undefined && c.min > c.max) throw new Error(`pulldown params: check "${c.id}" has min > max`);
   }
+  for (const [variation, overrides] of Object.entries(p.variations ?? {})) {
+    for (const [id, o] of Object.entries(overrides)) {
+      if (!seen.has(id)) throw new Error(`pulldown params: variation "${variation}" overrides unknown check "${id}"`);
+      for (const k of ["min", "max"] as const) {
+        if (o[k] !== undefined && o[k] !== null && typeof o[k] !== "number") throw new Error(`pulldown params: variation "${variation}" check "${id}" ${k} must be a number or null`);
+      }
+    }
+  }
   return { version: "unversioned", reviewedBy: null, ...p } as PulldownParams;
 }
 
 export const DEFAULT_PULLDOWN_PARAMS: PulldownParams = parsePulldownParams(defaultParamsJson);
+
+/**
+ * The checks as they apply to one variation: the shared limits with that variation's overrides on top. The result has
+ * no `variations` of its own, so evaluatePulldownRep and Motion Lab can use it directly.
+ */
+export function pulldownParamsFor(params: PulldownParams, variation: string): PulldownParams {
+  const overrides = params.variations?.[variation] ?? {};
+  const checks = params.checks.map((c) => {
+    const o = overrides[c.id];
+    if (!o) return { ...c };
+    const out: PulldownCheck = { ...c };
+    for (const k of ["min", "max"] as const) {
+      if (o[k] === null) delete out[k];
+      else if (o[k] !== undefined) out[k] = o[k];
+    }
+    if (o.why) out.why = `${c.why ?? ""} ${variation}: ${o.why}`.trim();
+    return out;
+  });
+  const { variations: _, ...rest } = params;
+  return { ...rest, checks };
+}
 
 export function evaluatePulldownRep(features: PulldownFeatures, params: PulldownParams = DEFAULT_PULLDOWN_PARAMS): CheckResult[] {
   return params.checks.map((c) => {
