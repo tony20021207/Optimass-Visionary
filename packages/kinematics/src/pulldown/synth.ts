@@ -6,7 +6,8 @@ import { standardExerciseCamera, type CameraPlacement } from "../camera";
 import type { Skeleton } from "../body/skeleton";
 import { SYNTH_STATURE_M } from "../posture/synth";
 import { renderSequence, type Body } from "../synth-render";
-import { add, cross, dist, norm, rejectFrom, scale, sub, unit, v, type Vec3 } from "../vec3";
+import type { JointMotionId } from "../joints/catalogue";
+import { add, cross, dist, dot, scale, sub, unit, v, type Vec3 } from "../vec3";
 
 export type PulldownGripType = "overhand" | "underhand" | "neutral";
 export type PulldownAttachment = "straight_bar" | "neutral_bar";
@@ -18,44 +19,23 @@ export type PulldownAttachment = "straight_bar" | "neutral_bar";
 export const PULLDOWN_KEY_AT = [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1] as const;
 
 /**
- * The joint angles that make the movement, one value per keyframe (PULLDOWN_KEY_AT). Joint by joint, per variation
- * (Tony, 2026-10-10). The bar's path, the line of pull and the forearm's angle to the cable are results of these, not
- * inputs. Angles in degrees, distances in meters.
+ * The pulldown's joint keyframes, in the shared clinical vocabulary (joints/catalogue.ts; Tony, 2026-10-10): one value
+ * per keyframe (PULLDOWN_KEY_AT). Signs follow the catalogue: + = flexion, abduction, elevation, protraction, upward
+ * rotation. Shoulder rotation is not here: with the hands on the bar it is set by where the elbow has to sit (closed
+ * chain), so it is a result (pulldownShoulderRotationDeg). Bar path, line of pull and forearm-to-cable angle are
+ * results too.
  */
-export interface PulldownJoints {
-  /** Trunk lean back from vertical. */
-  trunkLeanDeg: number[];
-  /** Shoulder girdle elevation along the trunk (+ = toward the ears, − = depressed). */
-  shoulderElevationM: number[];
-  /** Scapular retraction: each shoulder joint glides back around the ribcage and toward the spine. */
-  scapularRetractionM: number[];
-  /** Scapular downward rotation. MediaPipe has no scapula points, so it only shows as extra shoulder depression. */
-  scapularDownwardRotationDeg: number[];
-  /** Elbow flexion (0 = straight arm). */
-  elbowFlexionDeg: number[];
-  /**
-   * Where the hand is, seen from the side: angle of the shoulder-to-hand line from the trunk line (0 = straight
-   * overhead along the trunk, 90 = straight ahead of the shoulder, past 90 = below shoulder level).
-   */
-  armAngleDeg: number[];
-  /**
-   * Shoulder rotation, read from which way the elbow points around the shoulder-to-hand line (hands fixed on the bar,
-   * so this swing is humeral rotation; Tony, 2026-10-10): 0 = straight out to the side (more internal rotation),
-   * +90 = in front of that line (forward when the arms are overhead, under it once the hands are in front; more
-   * external), −90 = the other way.
-   */
-  elbowDirectionDeg: number[];
-}
-export type PulldownJointName = keyof PulldownJoints;
 export const PULLDOWN_JOINT_NAMES = [
-  "trunkLeanDeg",
-  "shoulderElevationM",
-  "scapularRetractionM",
-  "scapularDownwardRotationDeg",
-  "elbowFlexionDeg",
-  "armAngleDeg",
-  "elbowDirectionDeg",
-] as const satisfies readonly PulldownJointName[];
+  "trunk_flexion",
+  "scapular_elevation",
+  "scapular_protraction",
+  "scapular_upward_rotation",
+  "shoulder_flexion",
+  "shoulder_abduction",
+  "elbow_flexion",
+] as const satisfies readonly JointMotionId[];
+export type PulldownJointName = (typeof PULLDOWN_JOINT_NAMES)[number];
+export type PulldownJoints = Record<PulldownJointName, number[]>;
 
 /** Joint-centre distances of the simulated lifter (m). Arms per side, so a left-right difference carries through. */
 export interface PulldownBody {
@@ -113,7 +93,7 @@ export interface PulldownProfile {
  * Tony's wide overhand baseline. The joint keyframes were read off the earlier bar-driven model at Tony's Motion Lab
  * settings (2026-10-09: grip 2.2x, 11° elbow bend at the top, trunk 8° back with 18° swing, line of pull to the pulley,
  * forearms on the cable with a ~1° break, elbows 5° behind the trunk line, arms 42° from the trunk at the bottom), so the
- * motion is the same within about a centimetre. Scapular values are PLACEHOLDERS.
+ * motion is the same within about 2 cm. Scapular values are PLACEHOLDERS.
  */
 export const GOOD_PULLDOWN: PulldownProfile = {
   reps: 3,
@@ -126,14 +106,15 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   pulleyAheadOfKneeM: -0.22,
   gripWidthXShoulder: 2.2,
   joints: {
-    trunkLeanDeg: [8, 9.8, 12.5, 17, 21.5, 24.2, 26],
-    shoulderElevationM: [0.03, 0.025, 0.017, 0.005, -0.008, -0.015, -0.02],
-    scapularRetractionM: [0, 0.002, 0.004, 0.007, 0.011, 0.013, 0.015],
-    scapularDownwardRotationDeg: [0, 2, 5, 10, 15, 18, 20],
-    elbowFlexionDeg: [11, 44.1, 67.8, 93.4, 109.9, 116, 118.4],
-    armAngleDeg: [25.4, 29.1, 35.3, 47.9, 66.5, 83.7, 99],
-    elbowDirectionDeg: [37.9, 19.7, 14.7, 21.8, 36.5, 52.1, 67.3],
+    trunk_flexion: [-8, -9.8, -12.5, -17, -21.5, -24.2, -26],
+    scapular_elevation: [0.03, 0.025, 0.017, 0.005, -0.008, -0.015, -0.02],
+    scapular_protraction: [0, -0.002, -0.004, -0.007, -0.011, -0.013, -0.015],
+    scapular_upward_rotation: [0, -2, -5, -10, -15, -18, -20],
+    shoulder_flexion: [150.9, 140.9, 128.7, 75.4, 16.9, 0.2, -6.7],
+    shoulder_abduction: [29.1, 46.4, 60.8, 72.2, 62.4, 50.6, 41.5],
+    elbow_flexion: [11, 44.1, 67.8, 93.4, 109.9, 116, 118.4],
   },
+
   gripType: "overhand",
   attachment: "straight_bar",
   headForwardM: 0,
@@ -159,39 +140,39 @@ export const PULLDOWN_FAULTS = {
   momentum_swing: {
     set: { concentricS: 0.6, seed: 2 },
     add: {
-      trunkLeanDeg: [2, 3, 4.5, 7, 9.5, 11, 12],
-      elbowFlexionDeg: [0, -2.9, -5.2, -8.6, -10.8, -11, -10.4],
-      armAngleDeg: [2.9, 4.8, 7.4, 11.2, 12.1, 8.8, 3.8],
-      elbowDirectionDeg: [0.8, 2.7, 4.9, 6.9, 5.7, 0.6, -5.8],
+      trunk_flexion: [-2, -3, -4.5, -7, -9.5, -11, -12],
+      shoulder_flexion: [-2.9, -5.1, -8.8, 0.2, 12.8, 9.9, 6.7],
+      shoulder_abduction: [-0.1, -1.9, -4.2, -7.7, -3, 1.7, 5],
+      elbow_flexion: [0, -2.9, -5.2, -8.6, -10.8, -11, -10.4],
     },
   },
   /** Elbows never straighten at the top and the bar stops around the chin. */
   partial_rom: {
     set: { seed: 3 },
     add: {
-      elbowFlexionDeg: [29, 8.9, -0.3, -8.3, -12, -12.2, -11.3],
-      armAngleDeg: [0.3, 0.3, -0.1, -1.8, -7.7, -16, -24.5],
-      elbowDirectionDeg: [-0.3, -1.2, 0, -0.8, -7.1, -16.6, -26.7],
+      shoulder_flexion: [-11.7, -2.7, 0.3, 19, 32.6, 27.6, 23],
+      shoulder_abduction: [11.7, 5, -0.2, -3.3, 6, 13.7, 18.8],
+      elbow_flexion: [29, 8.9, -0.3, -8.3, -12, -12.2, -11.3],
     },
   },
   /** Shoulders ride up toward the ears instead of depressing as the bar comes down. */
   shrug: {
     set: { seed: 4 },
     add: {
-      shoulderElevationM: [0, 0.007, 0.018, 0.035, 0.053, 0.063, 0.07],
-      scapularDownwardRotationDeg: [0, -2, -5, -10, -15, -18, -20],
-      elbowFlexionDeg: [0, 1, 1.4, 0.4, -2.4, -4.9, -6.8],
-      armAngleDeg: [0, 0.6, 1.8, 5.4, 11.2, 13.4, 12.2],
-      elbowDirectionDeg: [0, 0.9, 2.8, 7.4, 15.7, 8.1, 2.1],
+      scapular_elevation: [0, 0.007, 0.018, 0.035, 0.053, 0.063, 0.07],
+      scapular_upward_rotation: [0, 2, 5, 10, 15, 18, 20],
+      shoulder_flexion: [0, -1.4, -5.2, -9.2, 5.7, 2.4, 0.2],
+      shoulder_abduction: [0, 0.4, 0.1, -5, -10.1, -3.9, -0.6],
+      elbow_flexion: [0, 1, 1.4, 0.4, -2.4, -4.9, -6.8],
     },
   },
   /** Pulls past the trunk line: the whole arm rotates back around the shoulder at the bottom. */
   over_pull: {
     set: { seed: 9 },
     add: {
-      elbowFlexionDeg: [0, 5, 8.1, 10.6, 9.3, 5.7, 1.9],
-      armAngleDeg: [0, 0.2, 0.6, 3.6, 16.6, 35.3, 46.1],
-      elbowDirectionDeg: [0, -0.7, -0.4, 2.7, 17.7, 27.5, 28.8],
+      shoulder_flexion: [0, -1.5, -5.2, -35.2, -19.2, -20.9, -25.4],
+      shoulder_abduction: [0, 2.8, 5.1, -0.2, -14.4, -15.6, -13.6],
+      elbow_flexion: [0, 5, 8.1, 10.6, 9.3, 5.7, 1.9],
     },
   },
   /** Bar is let go on the way up instead of being lowered under control. */
@@ -200,9 +181,9 @@ export const PULLDOWN_FAULTS = {
   elbows_forward: {
     set: { gripWidthXShoulder: 1.1, seed: 8 },
     add: {
-      elbowFlexionDeg: [0, 7.6, 13.3, 21.7, 30.5, 34.6, 35],
-      armAngleDeg: [-0.3, -0.4, -0.6, 0, 4, 11.9, 20.2],
-      elbowDirectionDeg: [51, 69.2, 74.1, 67, 54.1, 10, -17.1],
+      shoulder_flexion: [-1.2, -14, -21.4, 3.7, 30.5, 17.6, 0],
+      shoulder_abduction: [-27, -43.8, -57.8, -68.5, -59.1, -20.5, 0.1],
+      elbow_flexion: [0, 7.6, 13.3, 21.7, 30.5, 34.6, 35],
     },
   },
   /** Chin pokes forward as the bar comes down. */
@@ -245,11 +226,13 @@ export const PULLDOWN_SETUPS = {
     bottomPauseS: 0.2,
     topPauseS: 0.2,
     joints: {
-      ...GOOD_PULLDOWN.joints,
-      trunkLeanDeg: [6, 6.7, 7.8, 9.5, 11.2, 12.3, 13],
-      elbowFlexionDeg: [18, 36.7, 53.2, 71.8, 84.8, 90.7, 94],
-      armAngleDeg: [34.4, 37.2, 41.8, 50.2, 59.9, 66.4, 70.9],
-      elbowDirectionDeg: [89.4, 85.9, 85.7, 86.2, 86.3, 86.3, 86.3],
+      trunk_flexion: [-6, -6.7, -7.8, -9.5, -11.2, -12.3, -13],
+      scapular_elevation: [0.03, 0.025, 0.017, 0.005, -0.008, -0.015, -0.02],
+      scapular_protraction: [0, -0.002, -0.004, -0.007, -0.011, -0.013, -0.015],
+      scapular_upward_rotation: [0, -2, -5, -10, -15, -18, -20],
+      shoulder_flexion: [137.1, 125.5, 113.1, 96, 80.3, 71.2, 65.1],
+      shoulder_abduction: [2.1, 3.3, 4.1, 4.6, 5.3, 5.7, 6],
+      elbow_flexion: [18, 36.7, 53.2, 71.8, 84.8, 90.7, 94],
     },
   },
   // Forearms on the cable; the bar stops around the collarbone where the forearm would leave it.
@@ -259,10 +242,13 @@ export const PULLDOWN_SETUPS = {
     attachment: "neutral_bar",
     gripWidthXShoulder: 1.5,
     joints: {
-      ...GOOD_PULLDOWN.joints,
-      elbowFlexionDeg: [11, 43.7, 67.1, 91.7, 106.8, 112, 113.8],
-      armAngleDeg: [31.5, 36.4, 44.4, 60.2, 80.4, 94.7, 104.9],
-      elbowDirectionDeg: [48.9, 56.4, 47.3, 57.3, 67.6, 92.6, 92.8],
+      trunk_flexion: [-8, -9.8, -12.5, -17, -21.5, -24.2, -26],
+      scapular_elevation: [0.03, 0.025, 0.017, 0.005, -0.008, -0.015, -0.02],
+      scapular_protraction: [0, -0.002, -0.004, -0.007, -0.011, -0.013, -0.015],
+      scapular_upward_rotation: [0, -2, -5, -10, -15, -18, -20],
+      shoulder_flexion: [144.5, 125.2, 108.6, 76.8, 46.5, 32.6, 21.6],
+      shoulder_abduction: [13.5, 21.7, 32, 33.1, 28.7, 10.4, 10.6],
+      elbow_flexion: [11, 43.7, 67.1, 91.7, 106.8, 112, 113.8],
     },
   },
 } satisfies Record<string, PulldownProfile>;
@@ -377,60 +363,168 @@ export function jointsAt(p: PulldownProfile, prog: number): Record<PulldownJoint
 
 const gripHalfWidth = (p: PulldownProfile) => p.gripWidthXShoulder * bodyOf(p).shoulderHalfWidth;
 
-function shoulderMidAt(leanDeg: number, body: PulldownBody): Vec3 {
-  return v(0, body.trunk * Math.cos(rad(leanDeg)), -body.trunk * Math.sin(rad(leanDeg)));
-}
-
 /** Shoulder joint to the scapula's rotation centre, sideways (m). Made-up anatomy for the synthetic lifter. */
 const SCAPULA_ROTATION_RADIUS = 0.1;
 
-/**
- * Shoulder joint (glenohumeral centre) for side `s` (1 = left, −1 = right): trunk position plus shoulder girdle
- * elevation/depression, retraction and downward rotation.
- */
-function shoulderAt(j: Record<PulldownJointName, number>, s: 1 | -1, body: PulldownBody): Vec3 {
-  const L = v(1, 0, 0);
-  const trunkAxis = unit(shoulderMidAt(j.trunkLeanDeg, body));
-  const trunkFwd = unit(cross(L, trunkAxis));
-  const retraction = j.scapularRetractionM;
-  const rot = rad(j.scapularDownwardRotationDeg);
-  const out = body.shoulderHalfWidth - 0.4 * retraction - SCAPULA_ROTATION_RADIUS * (1 - Math.cos(rot));
-  const up = j.shoulderElevationM - SCAPULA_ROTATION_RADIUS * Math.sin(rot);
-  return add(add(add(shoulderMidAt(j.trunkLeanDeg, body), scale(trunkAxis, up)), scale(trunkFwd, -retraction)), scale(L, s * out));
-}
-
-/** Shoulder-to-wrist distance for an elbow flexion angle (0 = straight arm). */
-function reachForFlexion(flexionDeg: number, a: number, b: number): number {
-  return Math.sqrt(a * a + b * b + 2 * a * b * Math.cos(rad(flexionDeg)));
+type JointValues = Record<PulldownJointName, number>;
+/** Trunk axes for a trunk flexion angle (− = leaning back): up along the trunk, and forward square to it. */
+function trunkFrame(trunkFlexionDeg: number): { U: Vec3; F: Vec3 } {
+  const lean = -trunkFlexionDeg;
+  const U = v(0, Math.cos(rad(lean)), -Math.sin(rad(lean)));
+  return { U, F: cross(v(1, 0, 0), U) };
 }
 
 /**
- * One arm from its joint angles: the hand sits on the bar (gripHalfWidth out from the midline) at the shoulder-to-hand
- * distance the elbow flexion gives, at armAngleDeg from the trunk line seen from the side; the elbow points
- * elbowDirectionDeg around the shoulder-to-hand line.
+ * Shoulder joint (glenohumeral centre) for side `s` (1 = left, −1 = right): trunk position plus scapular elevation,
+ * protraction and upward rotation.
  */
-function armAt(shoulder: Vec3, j: Record<PulldownJointName, number>, gripHalf: number, s: 1 | -1, body: PulldownBody): { elbow: Vec3; wrist: Vec3 } {
+function shoulderAt(j: JointValues, s: 1 | -1, body: PulldownBody): Vec3 {
   const L = v(1, 0, 0);
-  const U = unit(shoulderMidAt(j.trunkLeanDeg, body));
-  const F = cross(L, U);
-  const a = s === 1 ? body.upperArm.left : body.upperArm.right;
-  const b = s === 1 ? body.forearm.left : body.forearm.right;
-  const reach = reachForFlexion(j.elbowFlexionDeg, a, b);
-  const dx = s * gripHalf - shoulder.x;
-  // Too close a grip for the reach: the hand lands as near to the bar as the arm allows.
-  const r = Math.sqrt(Math.max(0, reach * reach - dx * dx));
-  const ang = rad(j.armAngleDeg);
-  const wrist = add(add(shoulder, scale(L, dx)), add(scale(U, r * Math.cos(ang)), scale(F, r * Math.sin(ang))));
-  const sw = sub(wrist, shoulder);
-  const d = Math.min(norm(sw), (a + b) * 0.999);
-  const u = unit(sw);
-  const x = (a * a - b * b + d * d) / (2 * d);
-  const re = Math.sqrt(Math.max(0, a * a - x * x));
-  const e1 = unit(rejectFrom(scale(L, s), u)); // out to the side
-  const e2 = scale(cross(e1, u), s); // forward when the arm is overhead, down when the hand is in front
-  const phi = rad(j.elbowDirectionDeg);
-  const elbow = add(add(shoulder, scale(u, x)), add(scale(e1, re * Math.cos(phi)), scale(e2, re * Math.sin(phi))));
-  return { elbow, wrist };
+  const { U, F } = trunkFrame(j.trunk_flexion);
+  const protraction = j.scapular_protraction;
+  const down = rad(-j.scapular_upward_rotation);
+  const out = body.shoulderHalfWidth + 0.4 * protraction - SCAPULA_ROTATION_RADIUS * (1 - Math.cos(down));
+  const up = j.scapular_elevation - SCAPULA_ROTATION_RADIUS * Math.sin(down);
+  return add(add(add(scale(U, body.trunk), scale(U, up)), scale(F, protraction)), scale(L, s * out));
+}
+
+/** Rodrigues rotation of `x` about unit `axis` by `a` radians. */
+const rotateAbout = (x: Vec3, axis: Vec3, a: number): Vec3 =>
+  add(add(scale(x, Math.cos(a)), scale(cross(axis, x), Math.sin(a))), scale(axis, dot(axis, x) * (1 - Math.cos(a))));
+
+/**
+ * One arm from clinical angles (joints/catalogue.ts): shoulder flexion and abduction place the humerus against the
+ * trunk, external rotation turns the forearm around it, elbow flexion bends it.
+ */
+function armFromAngles(shoulder: Vec3, j: JointValues, rotationDeg: number, s: 1 | -1, a: number, b: number): { elbow: Vec3; wrist: Vec3 } {
+  const L = v(1, 0, 0);
+  const { U, F } = trunkFrame(j.trunk_flexion);
+  const f = rad(j.shoulder_flexion);
+  const ab = rad(j.shoulder_abduction);
+  const sagittal = add(scale(U, -Math.cos(f)), scale(F, Math.sin(f)));
+  const humerus = add(scale(sagittal, Math.cos(ab)), scale(L, s * Math.sin(ab)));
+  // Where the bent forearm points at 0° rotation: forward in anatomical position, carried through the flexion
+  // (abduction turns about an axis it lies on, so it doesn't move it).
+  const neutral = add(scale(F, Math.cos(f)), scale(U, Math.sin(f)));
+  const forearmSide = rotateAbout(neutral, scale(humerus, -s), rad(rotationDeg));
+  const e = rad(j.elbow_flexion);
+  const forearm = add(scale(humerus, Math.cos(e)), scale(forearmSide, Math.sin(e)));
+  const elbow = add(shoulder, scale(humerus, a));
+  return { elbow, wrist: add(elbow, scale(forearm, b)) };
+}
+
+const armLengths = (body: PulldownBody, s: 1 | -1) => (s === 1 ? [body.upperArm.left, body.forearm.left] : [body.upperArm.right, body.forearm.right]) as [number, number];
+
+/** Rotations (deg) that put the hand on the bar at the grip width: where the forearm's swing crosses the bar's line. */
+function rotationsOnBar(shoulder: Vec3, j: JointValues, s: 1 | -1, body: PulldownBody, gripHalf: number): { roots: number[]; closest: number } {
+  const [a, b] = armLengths(body, s);
+  const miss = (r: number) => s * armFromAngles(shoulder, j, r, s, a, b).wrist.x - gripHalf;
+  const roots: number[] = [];
+  let closest = 0;
+  let closestMiss = Infinity;
+  const STEP = 3;
+  let prev = miss(-180);
+  for (let r = -180; r < 180; r += STEP) {
+    const next = miss(r + STEP);
+    if (Math.abs(prev) < closestMiss) {
+      closestMiss = Math.abs(prev);
+      closest = r;
+    }
+    if (prev === 0 || prev * next < 0) {
+      let lo = r;
+      let hi = r + STEP;
+      let mLo = prev;
+      for (let k = 0; k < 30; k++) {
+        const m = (lo + hi) / 2;
+        const mm = miss(m);
+        if (mLo * mm <= 0) hi = m;
+        else {
+          lo = m;
+          mLo = mm;
+        }
+      }
+      roots.push((lo + hi) / 2);
+    }
+    prev = next;
+  }
+  return { roots, closest };
+}
+
+const wrapDeg = (d: number) => ((((d + 180) % 360) + 360) % 360) - 180;
+const TRACK_STEPS = 200;
+/** Largest abduction change (deg) tried when the keyed angles can't put the hand on the bar. */
+const MAX_ABDUCTION_ADJUST_DEG = 60;
+
+/** How one arm reaches the bar: its shoulder rotation, and how much its abduction had to change (0 when it didn't). */
+interface ArmOnBar {
+  rotationDeg: number;
+  abductionAdjustDeg: number;
+}
+
+/**
+ * Closed chain: puts the hand on the bar. Shoulder rotation is set by the bar; when no rotation reaches it with the keyed
+ * flexion, abduction and elbow flexion (e.g. after a grip change), abduction opens or closes by the smallest amount
+ * that does. Among several solutions, the one nearest `prev` (or at the top, the one holding the hand highest).
+ */
+function armOnBar(shoulder: Vec3, j: JointValues, s: 1 | -1, body: PulldownBody, gripHalf: number, prev?: ArmOnBar): ArmOnBar {
+  const [a, b] = armLengths(body, s);
+  for (let k = 0; k <= 2 * MAX_ABDUCTION_ADJUST_DEG; k++) {
+    // 0, +0.5, −0.5, +1, … (half-degree steps), starting from the previous adjustment so it stays continuous.
+    const base = prev?.abductionAdjustDeg ?? 0;
+    const d = base + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.5;
+    const jj = { ...j, shoulder_abduction: j.shoulder_abduction + d };
+    const { roots } = rotationsOnBar(shoulder, jj, s, body, gripHalf);
+    if (!roots.length) continue;
+    const pick = prev
+      ? roots.reduce((x, y) => (Math.abs(wrapDeg(y - prev.rotationDeg)) < Math.abs(wrapDeg(x - prev.rotationDeg)) ? y : x))
+      : roots.reduce((x, y) => (armFromAngles(shoulder, jj, y, s, a, b).wrist.y > armFromAngles(shoulder, jj, x, s, a, b).wrist.y ? y : x));
+    return { rotationDeg: pick, abductionAdjustDeg: d };
+  }
+  return { rotationDeg: prev?.rotationDeg ?? 0, abductionAdjustDeg: prev?.abductionAdjustDeg ?? 0 };
+}
+
+const trackCache = new Map<string, ArmOnBar[]>();
+
+/**
+ * One arm's closed-chain solution over the pull, at TRACK_STEPS + 1 points of its own progress. Each step starts from
+ * the last, so the arm never flips to the other way of reaching the bar mid-rep.
+ */
+function armTrack(p: PulldownProfile, s: 1 | -1): ArmOnBar[] {
+  const body = bodyOf(p);
+  const key = JSON.stringify([p.joints, p.gripWidthXShoulder, body, s]);
+  const hit = trackCache.get(key);
+  if (hit) return hit;
+  if (trackCache.size > 64) trackCache.clear();
+  const track: ArmOnBar[] = [];
+  for (let i = 0; i <= TRACK_STEPS; i++) {
+    const j = jointsAt(p, i / TRACK_STEPS);
+    track.push(armOnBar(shoulderAt(j, s, body), j, s, body, gripHalfWidth(p), track[i - 1]));
+  }
+  trackCache.set(key, track);
+  return track;
+}
+
+/**
+ * The arm's closed-chain angles at its progress `prog`: shoulder rotation (+ = external) set by the bar, and the
+ * abduction actually used (the keyed value unless the hand couldn't reach the bar with it).
+ */
+export function pulldownArmOnBar(p: PulldownProfile, prog: number, side: "left" | "right" = "left"): { shoulderRotationDeg: number; shoulderAbductionDeg: number } {
+  const s = side === "left" ? 1 : -1;
+  const track = armTrack(p, s);
+  const x = Math.min(1, Math.max(0, prog)) * TRACK_STEPS;
+  const i = Math.min(TRACK_STEPS - 1, Math.floor(x));
+  const t = x - i;
+  const guess: ArmOnBar = {
+    rotationDeg: track[i]!.rotationDeg + wrapDeg(track[i + 1]!.rotationDeg - track[i]!.rotationDeg) * t,
+    abductionAdjustDeg: track[i]!.abductionAdjustDeg + (track[i + 1]!.abductionAdjustDeg - track[i]!.abductionAdjustDeg) * t,
+  };
+  const body = bodyOf(p);
+  const j = jointsAt(p, prog);
+  const jj = { ...j, shoulder_abduction: j.shoulder_abduction + guess.abductionAdjustDeg };
+  // Snap to the exact on-bar rotation nearest the tracked one.
+  const { roots } = rotationsOnBar(shoulderAt(jj, s, body), jj, s, body, gripHalfWidth(p));
+  const rot = roots.length ? roots.reduce((r1, r2) => (Math.abs(wrapDeg(r2 - guess.rotationDeg)) < Math.abs(wrapDeg(r1 - guess.rotationDeg)) ? r2 : r1)) : guess.rotationDeg;
+  return { shoulderRotationDeg: rot, shoulderAbductionDeg: jj.shoulder_abduction };
 }
 
 /** Full 33-point pose in the body frame for rep progress `prog`. */
@@ -440,16 +534,18 @@ export function poseAt(prog: number, p: PulldownProfile): Body {
   const F = v(0, 0, 1);
   const body = bodyOf(p);
   const j = jointsAt(p, prog);
-  const trunkAxis = unit(shoulderMidAt(j.trunkLeanDeg, body));
-  const neckBase = shoulderMidAt(j.trunkLeanDeg, body); // head does not move with the shoulder girdle
+  const trunkAxis = trunkFrame(j.trunk_flexion).U;
+  const neckBase = scale(trunkAxis, body.trunk); // head does not move with the shoulder girdle
 
   const pose = {} as Body;
   for (const [side, s] of [["left", 1], ["right", -1]] as const) {
-    const js = side === "right" && p.rightArmLag ? jointsAt(p, prog * (1 - p.rightArmLag)) : j;
+    const armProg = side === "right" && p.rightArmLag ? prog * (1 - p.rightArmLag) : prog;
     // The trunk is shared: only the arm and girdle lag.
-    const jArm = { ...js, trunkLeanDeg: j.trunkLeanDeg };
+    const jArm = { ...jointsAt(p, armProg), trunk_flexion: j.trunk_flexion };
     const shoulder = shoulderAt(jArm, s, body);
-    const { elbow, wrist } = armAt(shoulder, jArm, gripHalfWidth(p), s, body);
+    const [a, b] = armLengths(body, s);
+    const onBar = pulldownArmOnBar(p, armProg, side);
+    const { elbow, wrist } = armFromAngles(shoulder, { ...jArm, shoulder_abduction: onBar.shoulderAbductionDeg }, onBar.shoulderRotationDeg, s, a, b);
     const forearmDir = unit(sub(wrist, elbow));
     // Thumbs point toward the midline overhand, away from it underhand, and back toward the face on a neutral grip.
     const thumbSide = p.gripType === "underhand" ? scale(L, s) : p.gripType === "neutral" ? scale(F, -1) : scale(L, -s);

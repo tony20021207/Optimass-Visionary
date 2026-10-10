@@ -35,4 +35,5 @@ export * from "./signal";
 export * as pulldown from "./pulldown";
 export * as posture from "./posture";
 export * as body from "./body";
+export * as joints from "./joints";
 export * from "./camera";

@@ -27,12 +27,15 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
   pulley 1.53 m above the hips and 0.22 m behind the knees. Tier 1's pulley assumption (MetricOptions) uses the same
   position. New fault codes not yet in the Tier 2 YAML: excessive_shoulder_extension, bar_path_off_line,
   forearm_off_line.
-- Joint keyframes (Tony, 2026-10-10): each variation sets its own joint angles (trunk lean, shoulder girdle, elbow
-  flexion, arm angle from the trunk line, elbow direction) at PULLDOWN_KEY_AT (top, 10%, 25%, 50%, 75%, 90%, bottom),
-  joined by a monotone cubic. Pulley and tempo are shared. The hands always stay on the bar at the grip width. Bar path,
-  line of pull and forearm-to-cable angle are results, not inputs. The presets were read off the earlier bar-driven
-  model (line to the pulley, forearms on the cable), within ~1 cm. Faults (PULLDOWN_FAULTS) add joint deltas, so they
-  work on every variation.
+- Clinical joint vocabulary (Tony, 2026-10-10): `src/joints/catalogue.ts` names every joint motion for all exercises
+  (shoulder flexion/extension, abduction/adduction, external/internal rotation, elbow flexion, scapular elevation,
+  protraction, upward rotation, trunk flexion, hip/knee/ankle...), with + / − directions. Simulation keyframes, video
+  measurements and rules should all use these ids.
+- Pulldown joint keyframes: each variation sets catalogue joints at PULLDOWN_KEY_AT (top, 10%, 25%, 50%, 75%, 90%,
+  bottom), joined by a monotone cubic. Pulley and tempo are shared. Closed chain: shoulder rotation is solved so the hand
+  sits on the bar at the grip width (followed continuously from the top), and abduction opens or closes only when no
+  rotation reaches the bar (pulldownArmOnBar). Presets were read off the earlier bar-driven model, within ~2 cm. Faults
+  (PULLDOWN_FAULTS) add joint deltas, so they work on every variation.
 - Lifter from the posture check (Tony, 2026-10-10): `pulldownBodyFromSkeleton(calibrateSkeleton(captures))` gives
   `profile.body` (bone lengths per side, trunk, widths); the joint keyframes then move that person's skeleton.
 - Forearms on the line of pull in the FRONT view too, over the bottom 80% of the pull (Tony, 2026-10-09): check

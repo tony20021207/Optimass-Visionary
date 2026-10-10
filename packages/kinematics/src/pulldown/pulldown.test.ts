@@ -171,7 +171,7 @@ describe("placeholder parameters vs synthetic reps", () => {
   it("follows a profile edited in place (Motion Lab sliders)", () => {
     const profile = { ...PULLDOWN_VARIANTS.good, joints: { ...PULLDOWN_VARIANTS.good.joints } };
     const before = poseAt(1, profile).left_wrist.y;
-    profile.joints.armAngleDeg = profile.joints.armAngleDeg.map((x, i) => (i === 6 ? x + 20 : x));
+    profile.joints.shoulder_flexion = profile.joints.shoulder_flexion.map((x, i) => (i === 6 ? x + 20 : x));
     expect(poseAt(1, profile).left_wrist.y).not.toBeCloseTo(before, 3);
   });
 
@@ -200,14 +200,26 @@ describe("pulldown variations", () => {
     expect(share("narrow_underhand")).toBeGreaterThan(share("wide_overhand") + 0.4);
   });
 
-  it("elbow direction keyframes swing the elbows on any grip", () => {
-    const elevation = (dirDeg: number) => {
+  it("shoulder adduction keyframes bring the arms down on any grip", () => {
+    const elevation = (abductionDeg: number) => {
       const p = pulldownProfileFor("neutral_bar");
-      const joints = { ...p.joints, elbowDirectionDeg: p.joints.elbowDirectionDeg.map((x, i) => (i >= 4 ? dirDeg : x)) };
+      const joints = { ...p.joints, shoulder_abduction: p.joints.shoulder_abduction.map((x, i) => (i >= 5 ? abductionDeg : x)) };
       const reps = analyzePulldown(synthesizePulldown({ ...p, joints, noiseM: 0 })).reps;
       return reps.reduce((s, r) => s + r.features.humerothoracic_elevation_bottom_deg!, 0) / reps.length;
     };
-    expect(Math.abs(elevation(0) - elevation(90))).toBeGreaterThan(10);
+    expect(elevation(40) - elevation(5)).toBeGreaterThan(10);
+  });
+
+  it("keeps both hands on the bar at the grip width, with the bar setting shoulder rotation", () => {
+    for (const setup of Object.keys(PULLDOWN_SETUPS) as PulldownSetup[]) {
+      const p = { ...pulldownProfileFor(setup), noiseM: 0 };
+      for (let prog = 0; prog <= 1.0001; prog += 0.05) {
+        const b = poseAt(prog, p);
+        const shoulderWidth = Math.abs(b.left_shoulder.x - b.right_shoulder.x);
+        expect(Math.abs(b.left_wrist.x - b.right_wrist.x) / 0.4).toBeCloseTo(p.gripWidthXShoulder, 2);
+        expect(shoulderWidth).toBeGreaterThan(0);
+      }
+    }
   });
 
   it.each(["narrow_underhand", "neutral_bar"] as const)(
@@ -265,10 +277,15 @@ describe("grip from arm lengths", () => {
   it("bottom-only rule: forearms vertical at the bottom (synthetic lifter: 2.0x)", () => {
     const g = recommendedGrip(PULLDOWN_SYNTH_ARMS, { bottomArmElevationDeg: 42, forearmTiltDeg: 0 });
     expect(g.gripWidthXShoulder).toBeCloseTo(2.0, 1);
-    // The formula's bar height matches the synthetic rep at that grip and arm angle.
+    // The formula's bar height matches the synthetic rep at that grip, at the arm angle the rep actually finishes with
+    // (narrowing the grip on the same joint keyframes closes the arms a little).
     const reps = analyzePulldown(synthesizePulldown({ ...GOOD_PULLDOWN, gripWidthXShoulder: g.gripWidthXShoulder, noiseM: 0 }), undefined, {}).reps;
-    const bar = reps.reduce((s, r) => s + r.features.bar_bottom_rel_shoulder_m!, 0) / reps.length;
-    expect(Math.abs(bar - g.barAboveShouldersM)).toBeLessThan(0.02);
+    const mean = (f: (r: (typeof reps)[number]) => number) => reps.reduce((s, r) => s + f(r), 0) / reps.length;
+    const bar = mean((r) => r.features.bar_bottom_rel_shoulder_m!);
+    const elevation = mean((r) => r.features.humerothoracic_elevation_bottom_deg!);
+    const atThatAngle = recommendedGrip(PULLDOWN_SYNTH_ARMS, { bottomArmElevationDeg: elevation, forearmTiltDeg: 0 });
+    // The formula assumes a vertical forearm; the synthetic one is a few degrees off, worth ~0.5 cm.
+    expect(Math.abs(bar - atThatAngle.barAboveShouldersM)).toBeLessThan(0.025);
   });
 
   it("widens the grip for a longer upper arm at the same shoulder width", () => {
