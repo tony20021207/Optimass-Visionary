@@ -28,8 +28,12 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
   position. New fault codes not yet in the Tier 2 YAML: excessive_shoulder_extension, bar_path_off_line,
   forearm_off_line.
 - Line of pull aims at the pulley by default (`lineToPulley`, Tony 2026-10-09): moving the pulley tilts the line
-  (wide grip ~14°). One pulley position for every variation (Tony). With the forearm held on the cable, the pull also
-  ends where the forearm would leave it (stopOnLine, OFF_CABLE_STOP_DEG): close grips stop with the bar around chin height.
+  (wide grip ~14°). One pulley position for every variation (Tony). The pull ends at the elbow target
+  (bottomHumerusBehindDeg) or the bar depth limit (bottomBarMinM), whichever comes first. Close grips keep the forearm
+  on the cable, can't get the elbows behind the trunk, and stop on the depth limit (bar around chin height).
+- Motion Lab sliders (Tony, 2026-10-10) all act on every grip: elbows-out tilt, elbow target, bar depth, forearm break,
+  break onset, pulley, bar line ahead of shoulders. Free-elbow fields (bottomArmElevationDeg, elbowsForward) are
+  fault-only.
 - Forearms on the line of pull in the FRONT view too, over the bottom 80% of the pull (Tony, 2026-10-09): check
   forearms_on_line_front. Grip formula in `grip.ts` (best fit: hands under the middle of the elbow's sideways swing;
   2.2x on the synthetic lifter); with a skeleton, analyzePulldown reports recommendedGrip and grip_vs_recommended.

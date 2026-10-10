@@ -40,23 +40,33 @@ export interface PulldownProfile {
   pulleyAboveHipM: number;
   pulleyAheadOfKneeM: number;
   /**
-   * How far the arms come down at the bottom: upper arm angle from the trunk's downward axis (0 = against the sides).
-   * Lower = more adduction. Seen from the side the forearm stays on the cable line until the last quarter of the pull,
-   * then breaks off it (elbows dropping behind) by whatever angle lands the arms here at the trunk-line stop point.
-   * Less break = arms finish lower; a break of 0 is the lowest the forearm-on-line pull can reach.
-   * With free elbows (forearmOnLine false) the elbows flare out over the last quarter instead; 0 = no flare.
+   * Free-elbow pulls only (forearmOnLine false, the elbows_forward fault): how far the arms come down at the bottom,
+   * upper arm angle from the trunk's downward axis; the elbows flare out over the last quarter to land here.
    */
   bottomArmElevationDeg: number;
   /**
-   * Hold the forearm on the pull line (side view) as above. Off for the elbows-forward pull: with a close grip the
-   * forearm can only stay on the line by flaring the elbow out, so there the elbow just bends toward its pole.
+   * Forearm held on the cable (every variation): how far it breaks off the cable at the bottom, seen from the side
+   * (+ = elbows dropping behind the line), easing in over the last forearmBreakFraction of the pull. More break lets
+   * the elbows travel further back before the forearm leaves the cable.
+   */
+  bottomForearmBreakDeg: number;
+  /**
+   * Lowest point of the bar, as distance along the pull line from shoulder level (m, − = below the shoulders). The pull
+   * ends at whichever comes first: this depth or bottomHumerusBehindDeg. Close grips that keep the forearm on the cable
+   * can't get the elbows behind the trunk, so this sets their bottom.
+   */
+  bottomBarMinM: number;
+  /**
+   * Hold the forearm on the cable (side view). On for every variation; off only for the elbows_forward fault, where the
+   * elbow just bends toward its pole.
    */
   forearmOnLine: boolean;
   /** Share of the bar's travel, at the bottom, over which the forearm leaves the pull line (0.25 = the last quarter). */
   forearmBreakFraction: number;
   /**
-   * With the forearm held on the cable: how far it may tilt sideways (seen from the front) before the solver trades
-   * side-view alignment for an upright forearm. Lower = straighter down from the front.
+   * With the forearm held on the cable: how far the elbows may swing out to the side, as the forearm's tilt from
+   * vertical seen from the front, before the solver trades side-view alignment for an upright forearm. Also sets which
+   * way the elbows bend: 0 = forward (straight down from the front), 24+ = out to the sides.
    */
   forearmFrontTiltFreeDeg: number;
   /**
@@ -84,7 +94,10 @@ export interface PulldownProfile {
    * Default overhand grip 2.0× (Tony, 2026-10-07); close grip ≈ 1.1×. For a given bar depth a wider grip needs less elbow bend.
    */
   gripWidthXShoulder: number;
-  /** Where the elbows point as they bend: 0 = out to the sides, 1 = forward. Moves the pull from adduction to extension. */
+  /**
+   * Free-elbow pulls only: where the elbows point as they bend (0 = out to the sides, 1 = forward). With the forearm on
+   * the cable this comes from forearmFrontTiltFreeDeg.
+   */
   elbowsForward: number;
   /** Hand orientation: overhand (palms forward), underhand (palms toward the face) or neutral (palms facing each other). */
   gripType: PulldownGripType;
@@ -120,6 +133,10 @@ export const GOOD_PULLDOWN: PulldownProfile = {
   pulleyAboveHipM: 1.53,
   pulleyAheadOfKneeM: -0.22,
   bottomArmElevationDeg: 42,
+  // Solved from Tony's "arms 42° from the trunk at the bottom" (2026-10-09) before the slider redesign.
+  bottomForearmBreakDeg: 0.92,
+  // Below where the wide grip's elbow target stops it (-0.09 m): only the elbow target ends the wide pull.
+  bottomBarMinM: -0.3,
   forearmOnLine: true,
   forearmBreakFraction: 0.25,
   forearmFrontTiltFreeDeg: 12,
@@ -149,7 +166,9 @@ export const PULLDOWN_VARIANTS = {
   /** Elbows never straighten at the top and the bar stops around the chin. */
   partial_rom: { ...GOOD_PULLDOWN, topElbowFlexionDeg: 40, bottomHumerusBehindDeg: -8, seed: 3 },
   /** Shoulders ride up toward the ears instead of depressing as the bar comes down. */
-  shrug: { ...GOOD_PULLDOWN, shoulderElevationTopM: 0.03, shoulderElevationBottomM: 0.05, scapularDownwardRotationDeg: 0, seed: 4 },
+  // The higher shoulders leave less room under them; a bigger forearm break keeps the arms finishing ~41° from the trunk
+  // like the good rep, so only the shrug shows.
+  shrug: { ...GOOD_PULLDOWN, shoulderElevationTopM: 0.03, shoulderElevationBottomM: 0.05, scapularDownwardRotationDeg: 0, bottomForearmBreakDeg: 15, seed: 4 },
   /** Pulls past the trunk line: the whole arm rotates back around the shoulder at the bottom (the old default). */
   over_pull: { ...GOOD_PULLDOWN, bottomHumerusBehindDeg: 28, seed: 9 },
   /** Bar is let go on the way up instead of being lowered under control. */
@@ -182,10 +201,11 @@ export const PULLDOWN_SETUPS = {
     gripType: "underhand",
     gripWidthXShoulder: 1.1,
     // Elbows bend forward, not out: forearms straight down from the front for the whole pull (Tony, 2026-10-10).
-    elbowsForward: 1,
     forearmOnLine: true,
     forearmFrontTiltFreeDeg: 0,
-    bottomArmElevationDeg: 0,
+    bottomForearmBreakDeg: 0,
+    // Forearm on the cable beats depth (Tony, 2026-10-09): the bar stops where the forearm would leave the cable.
+    bottomBarMinM: 0.11,
     bottomHumerusBehindDeg: 2.5,
     topElbowFlexionDeg: 18,
     lineAheadOfShouldersM: 0.27,
@@ -200,9 +220,10 @@ export const PULLDOWN_SETUPS = {
     ...GOOD_PULLDOWN,
     gripType: "neutral",
     attachment: "neutral_bar",
-    bottomArmElevationDeg: 0,
+    bottomForearmBreakDeg: 0,
+    // Forearm on the cable beats depth (Tony, 2026-10-09): the bar stops where the forearm would leave the cable.
+    bottomBarMinM: -0.075,
     gripWidthXShoulder: 1.5,
-    elbowsForward: 0.8,
     forearmOnLine: true,
     lineAheadOfShouldersM: 0.16,
   },
@@ -444,7 +465,7 @@ function blendElbow(shoulder: Vec3, a: { elbow: Vec3; wrist: Vec3 }, b: { elbow:
 interface BarTravel {
   top: number;
   bottom: number;
-  /** Forearm break off the cable line at the bottom (degrees), solved from bottomArmElevationDeg. */
+  /** Forearm break off the cable at the bottom (degrees; free-elbow pulls: the elbow flare, 0..1). */
   breakDeg: number;
 }
 // Keyed by the profile's values, not the object: callers (Motion Lab's sliders) edit profiles in place.
@@ -459,8 +480,8 @@ function armElevationDeg(pose: Body, leanDeg: number): number {
 }
 
 /**
- * Walks down the line from the top until the upper arm is bottomHumerusBehindDeg behind the trunk; if it never gets
- * there (the forearm-on-line constraint caps how far back the elbow can go), stops where it gets furthest back.
+ * Walks down the line from the top until the upper arm is bottomHumerusBehindDeg behind the trunk or the bar reaches
+ * bottomBarMinM, whichever comes first.
  */
 function stopOnLine(p: PulldownProfile, top: number, breakDeg: number, endLean: number): number {
   let memoT = NaN;
@@ -473,23 +494,10 @@ function stopOnLine(p: PulldownProfile, top: number, breakDeg: number, endLean: 
     return memoPose;
   };
   const behindAt = (t: number) => humerusBehindDeg(poseAtT(t), endLean) - p.bottomHumerusBehindDeg;
-  // Forearm held on the cable: the pull also ends where the arm can't keep it there any more (Tony, 2026-10-09: close
-  // grips stop short of the chest rather than break the forearm off the cable).
-  const offCable = (t: number) => {
-    if (!p.forearmOnLine) return 0;
-    const pose = poseAtT(t);
-    const f = sub(pose.left_wrist, pose.left_elbow);
-    const c = sub(pulleyOf(p), barOnLine(p, t));
-    const e = Math.atan2(f.z, f.y) - Math.atan2(c.z, c.y) - rad(breakDeg);
-    return (Math.abs(Math.atan2(Math.sin(e), Math.cos(e))) * 180) / Math.PI;
-  };
-  // Near the top the arm is almost straight and can't line up yet; the cable rule applies once the forearm is on it.
-  let onCable = false;
-  const stopsAt = (t: number) => behindAt(t) >= 0 || (onCable && offCable(t) > OFF_CABLE_STOP_DEG);
+  const stopsAt = (t: number) => behindAt(t) >= 0 || t <= p.bottomBarMinM;
   let bestT = top;
   let best = behindAt(top);
   for (let t = top - 0.005; t >= -0.7; t -= 0.005) {
-    if (!onCable && offCable(t) <= OFF_CABLE_STOP_DEG) onCable = true;
     if (stopsAt(t)) {
       let lo = t;
       let hi = t + 0.005;
@@ -508,8 +516,6 @@ function stopOnLine(p: PulldownProfile, top: number, breakDeg: number, endLean: 
   }
   return bestT;
 }
-/** With the forearm held on the cable, how far (side view, past the planned break) it may leave it before the pull ends. */
-const OFF_CABLE_STOP_DEG = 8;
 /**
  * Where the bar starts and finishes on the pull line (`t`, see barOnLine). Top: shoulder-to-wrist distance gives
  * `topElbowFlexionDeg` (bisection). Bottom: the trunk-line stop point (stopOnLine), with the forearm break chosen so the
@@ -554,24 +560,14 @@ export function barTravelFor(p: PulldownProfile): BarTravel {
     barCache.set(key, travel);
     return travel;
   }
-  // More forearm break → the elbow reaches the stop point sooner, with the arms higher. Bisect the break that lands the
-  // arms at bottomArmElevationDeg (0-60 deg of break; at 0 the arms are as low as this pull allows).
-  const elevationFor = (breakDeg: number) => armElevationDeg(poseWithBar(1, p, top, bottomFor(breakDeg), breakDeg), endLean);
-  let breakDeg = 0;
-  if (elevationFor(0) < p.bottomArmElevationDeg) {
-    let blo = 0;
-    let bhi = 60;
-    for (let i = 0; i < 25; i++) {
-      const m = (blo + bhi) / 2;
-      if (elevationFor(m) < p.bottomArmElevationDeg) blo = m;
-      else bhi = m;
-    }
-    breakDeg = (blo + bhi) / 2;
-  }
+  const breakDeg = p.bottomForearmBreakDeg;
   const travel = { top, bottom: bottomFor(breakDeg), breakDeg };
   barCache.set(key, travel);
   return travel;
 }
+
+/** Sideways forearm allowance at which the elbows bend fully out to the sides (12° = halfway, the wide-grip baseline). */
+const ELBOW_OUT_FULL_DEG = 24;
 
 /** Full 33-point pose in the body frame for bar progress `prog`. */
 export function poseAt(prog: number, p: PulldownProfile): Body {
@@ -601,7 +597,9 @@ function poseWithBar(prog: number, p: PulldownProfile, topT: number, bottomT: nu
     const wristTarget = add(barOnLine(p, t + lag), v(s * gripHalfWidth(p), 0, 0));
     // Elbows bend toward the pole: out, down and slightly back by default; forward as elbowsForward → 1.
     // Free elbows: flare out toward the sides over the last part of the pull (see barTravelFor).
-    const k = p.forearmOnLine ? p.elbowsForward : p.elbowsForward * (1 - forearmOffLineAt(prog, breakDeg, p.forearmBreakFraction));
+    const k = p.forearmOnLine
+      ? Math.min(1, Math.max(0, 1 - p.forearmFrontTiltFreeDeg / ELBOW_OUT_FULL_DEG))
+      : p.elbowsForward * (1 - forearmOffLineAt(prog, breakDeg, p.forearmBreakFraction));
     const pole = add(add(scale(L, s * (1 - k)), scale(U, -1)), scale(F, -0.3 + 1.3 * k));
     const free = solveElbow(shoulder, wristTarget, pole);
     const onLine = p.forearmOnLine ? solveElbowOnLine(shoulder, wristTarget, dir, offLine, pole, p.forearmFrontTiltFreeDeg) : free;

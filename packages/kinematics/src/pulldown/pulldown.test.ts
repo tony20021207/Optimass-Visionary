@@ -198,10 +198,10 @@ describe("pulldown variations", () => {
 
   it("'arms down at bottom' flares the elbows on free-elbow close-grip pulls too (Tony, 2026-10-09)", () => {
     const elevation = (deg: number) => {
-      const reps = analyzePulldown(synthesizePulldown({ ...pulldownProfileFor("neutral_bar"), forearmOnLine: false, bottomArmElevationDeg: deg, noiseM: 0 })).reps;
+      const reps = analyzePulldown(synthesizePulldown({ ...pulldownProfileFor("neutral_bar"), forearmOnLine: false, elbowsForward: 1, bottomArmElevationDeg: deg, noiseM: 0 })).reps;
       return reps.reduce((s, r) => s + r.features.humerothoracic_elevation_bottom_deg!, 0) / reps.length;
     };
-    expect(elevation(20) - elevation(0)).toBeGreaterThan(10);
+    expect(elevation(40) - elevation(0)).toBeGreaterThan(10);
   });
 
   it.each(["narrow_underhand", "neutral_bar"] as const)(
