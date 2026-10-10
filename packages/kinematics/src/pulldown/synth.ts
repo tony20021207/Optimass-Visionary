@@ -253,23 +253,25 @@ export const PULLDOWN_VARIANTS = Object.fromEntries(
  */
 export const PULLDOWN_SETUPS = {
   wide_overhand: GOOD_PULLDOWN,
-  // Tony's Motion Lab settings (2026-10-10), read off the earlier model: forearms on the cable from the side and
-  // straight down from the front (elbows bend forward), bar finishing around chin to nose height, trunk 6° back with
-  // 7° swing, 1 s up / 2 s down, 0.2 s pauses. Grip and top elbow bend came from Tony's underhand clip.
+  // Tony's Motion Lab baseline (2026-10-10, pasted 16:45Z): elbows driven down to 12° elevation at the bottom with the
+  // forearm held on its line (elbow follows to 134.5°), plane swinging from forward (82°) to 21.5° at the bottom, scapula
+  // rotating 8.5° up at the top to 17° down at the bottom against a 2:1 rhythm starting at 15°, trunk 6° back with 7°
+  // swing, 1 s up / 2 s down, 0.15 s bottom and 0.2 s top pause. Grip from Tony's underhand clip.
   narrow_underhand: {
     ...GOOD_PULLDOWN,
     gripType: "underhand",
     gripWidthXShoulder: 1.1,
-    bottomPauseS: 0.2,
+    bottomPauseS: 0.15,
     topPauseS: 0.2,
+    scapularRhythm: { glenohumeralPerScapular: 2, onsetDeg: 15 },
     joints: {
       trunk_flexion: [-6, -7.8, -11.2, -13],
-      scapular_elevation: [0.03, 0.017, -0.008, -0.02],
-      scapular_protraction: [0, -0.004, -0.011, -0.015],
-      scapular_upward_rotation: [0, 0, 0, 0],
-      shoulder_elevation: [137.1, 112.9, 80.5, 65.2],
-      shoulder_plane_of_elevation: [86.9, 85.4, 84.7, 83.4],
-      elbow_flexion: [18, 53.2, 84.8, 94],
+      scapular_elevation: [0.03, -0.01, -0.015, -0.02],
+      scapular_protraction: [0, -0.004, -0.011, -0.014],
+      scapular_upward_rotation: [8.5, 0, -8.5, -17],
+      shoulder_elevation: [146, 100.5, 56.5, 12],
+      shoulder_plane_of_elevation: [82, 78.5, 72.5, 21.5],
+      elbow_flexion: [15.6, 72.6, 111, 134.5],
     },
   },
   // Forearms on the cable; the bar stops around the collarbone where the forearm would leave it.
