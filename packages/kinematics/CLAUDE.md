@@ -27,13 +27,12 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
   pulley 1.53 m above the hips and 0.22 m behind the knees. Tier 1's pulley assumption (MetricOptions) uses the same
   position. New fault codes not yet in the Tier 2 YAML: excessive_shoulder_extension, bar_path_off_line,
   forearm_off_line.
-- Line of pull aims at the pulley by default (`lineToPulley`, Tony 2026-10-09): moving the pulley tilts the line
-  (wide grip ~14°). One pulley position for every variation (Tony). The pull ends at the elbow target
-  (bottomHumerusBehindDeg) or the bar depth limit (bottomBarMinM), whichever comes first. Close grips keep the forearm
-  on the cable, can't get the elbows behind the trunk, and stop on the depth limit (bar around chin height).
-- Motion Lab sliders (Tony, 2026-10-10) all act on every grip: elbows-out tilt, elbow target, bar depth, forearm break,
-  break onset, pulley, bar line ahead of shoulders. Free-elbow fields (bottomArmElevationDeg, elbowsForward) are
-  fault-only.
+- Joint keyframes (Tony, 2026-10-10): each variation sets its own joint angles (trunk lean, shoulder girdle, elbow
+  flexion, arm angle from the trunk line, elbow direction) at PULLDOWN_KEY_AT (top, 10%, 25%, 50%, 75%, 90%, bottom),
+  joined by a monotone cubic. Pulley and tempo are shared. The hands always stay on the bar at the grip width. Bar path,
+  line of pull and forearm-to-cable angle are results, not inputs. The presets were read off the earlier bar-driven
+  model (line to the pulley, forearms on the cable), within ~1 cm. Faults (PULLDOWN_FAULTS) add joint deltas, so they
+  work on every variation.
 - Forearms on the line of pull in the FRONT view too, over the bottom 80% of the pull (Tony, 2026-10-09): check
   forearms_on_line_front. Grip formula in `grip.ts` (best fit: hands under the middle of the elbow's sideways swing;
   2.2x on the synthetic lifter); with a skeleton, analyzePulldown reports recommendedGrip and grip_vs_recommended.

@@ -7,9 +7,9 @@ import {
   pulldownCamera,
   PULLDOWN_VARIANTS,
   analyzePulldown,
-  barTravelFor,
   parsePulldownParams,
   poseAt,
+  pullLineDegOf,
   PULLDOWN_SETUPS,
   PULLDOWN_SYNTH_ARMS,
   recommendedGrip,
@@ -155,20 +155,20 @@ describe("placeholder parameters vs synthetic reps", () => {
   it("recovers the pull line and forearm alignment from every camera angle", () => {
     for (const az of AZIMUTHS) {
       for (const r of analyzePulldown(clip("good", az)).reps) {
-        expect(Math.abs(r.features.pull_line_deg - PULLDOWN_VARIANTS.good.pullLineDeg)).toBeLessThan(2);
+        expect(Math.abs(r.features.pull_line_deg - pullLineDegOf(PULLDOWN_VARIANTS.good))).toBeLessThan(2);
         expect(r.features.forearm_off_line_deg).toBeLessThan(5);
-        expect(Math.abs(r.features.forearm_off_line_bottom_deg - barTravelFor(PULLDOWN_VARIANTS.good).breakDeg)).toBeLessThan(4);
-        // Arms finish where the profile asks (adduction target).
-        expect(Math.abs(r.features.humerothoracic_elevation_bottom_deg - PULLDOWN_VARIANTS.good.bottomArmElevationDeg)).toBeLessThan(5);
+        // Tony's baseline (2026-10-09): ~1° forearm break, arms 42° from the trunk at the bottom.
+        expect(Math.abs(r.features.forearm_off_line_bottom_deg - 0.92)).toBeLessThan(4);
+        expect(Math.abs(r.features.humerothoracic_elevation_bottom_deg - 42)).toBeLessThan(5);
       }
     }
   });
 
   it("follows a profile edited in place (Motion Lab sliders)", () => {
-    const profile = { ...PULLDOWN_VARIANTS.good };
-    const before = barTravelFor(profile).bottom;
-    profile.bottomHumerusBehindDeg = 25;
-    expect(barTravelFor(profile).bottom).not.toBeCloseTo(before, 3);
+    const profile = { ...PULLDOWN_VARIANTS.good, joints: { ...PULLDOWN_VARIANTS.good.joints } };
+    const before = poseAt(1, profile).left_wrist.y;
+    profile.joints.armAngleDeg = profile.joints.armAngleDeg.map((x, i) => (i === 6 ? x + 20 : x));
+    expect(poseAt(1, profile).left_wrist.y).not.toBeCloseTo(before, 3);
   });
 
   it("rejects malformed parameter files", () => {
@@ -196,19 +196,20 @@ describe("pulldown variations", () => {
     expect(share("narrow_underhand")).toBeGreaterThan(share("wide_overhand") + 0.4);
   });
 
-  it("'arms down at bottom' flares the elbows on free-elbow close-grip pulls too (Tony, 2026-10-09)", () => {
-    const elevation = (deg: number) => {
-      const reps = analyzePulldown(synthesizePulldown({ ...pulldownProfileFor("neutral_bar"), forearmOnLine: false, elbowsForward: 1, bottomArmElevationDeg: deg, noiseM: 0 })).reps;
+  it("elbow direction keyframes swing the elbows on any grip", () => {
+    const elevation = (dirDeg: number) => {
+      const p = pulldownProfileFor("neutral_bar");
+      const joints = { ...p.joints, elbowDirectionDeg: p.joints.elbowDirectionDeg.map((x, i) => (i >= 4 ? dirDeg : x)) };
+      const reps = analyzePulldown(synthesizePulldown({ ...p, joints, noiseM: 0 })).reps;
       return reps.reduce((s, r) => s + r.features.humerothoracic_elevation_bottom_deg!, 0) / reps.length;
     };
-    expect(elevation(40) - elevation(0)).toBeGreaterThan(10);
+    expect(Math.abs(elevation(0) - elevation(90))).toBeGreaterThan(10);
   });
 
   it.each(["narrow_underhand", "neutral_bar"] as const)(
     "%s keeps the forearm within 15° of the cable, side and front, over the bottom 80% (Tony, 2026-10-09)",
     (setup) => {
       const p = { ...pulldownProfileFor(setup), noiseM: 0 };
-      expect(p.forearmOnLine).toBe(true);
       const deg = (r: number) => (r * 180) / Math.PI;
       const pulley = { y: p.pulleyAboveHipM, z: 0.43 + p.pulleyAheadOfKneeM };
       for (let prog = 0.2; prog <= 1.0001; prog += 0.1) {
