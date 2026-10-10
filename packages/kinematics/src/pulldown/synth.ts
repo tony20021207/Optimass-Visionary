@@ -860,6 +860,40 @@ export function pulldownForearmToCableDeg(p: PulldownProfile, prog: number): num
 }
 
 /**
+ * Least elbow flexion at keyframe `k` (at or above the keyed bend) that lets the left hand reach the bar with the keyed
+ * plane of elevation. With a near-straight elbow the hand's place is set by elevation and plane alone, so flaring the
+ * elbow out (lower plane = more internal rotation) only stays on the bar if the elbow bends (Tony, 2026-10-10). Returns
+ * the keyed bend when it already reaches, or undefined when no bend within the end range does.
+ */
+export function elbowFlexionReachingBar(p: PulldownProfile, k: number): number | undefined {
+  const at = PULLDOWN_KEY_AT[k]!;
+  const body = bodyOf(p);
+  const j0 = jointsAt(p, at);
+  const reaches = (e: number) => {
+    const j = { ...j0, elbow_flexion: e };
+    return rotationsOnBar(shoulderAt(j, 1, body, rhythmOf(p)), j, 1, body, gripHalfWidth(p)).roots.length > 0;
+  };
+  const keyed = j0.elbow_flexion;
+  if (reaches(keyed)) return keyed;
+  const [, hi] = jointLimits("elbow_flexion");
+  let prev = keyed;
+  for (let e = keyed + 1; e <= hi; e += 1) {
+    if (reaches(e)) {
+      let lo = prev;
+      let up = e;
+      for (let i = 0; i < 15; i++) {
+        const mid = (lo + up) / 2;
+        if (reaches(mid)) up = mid;
+        else lo = mid;
+      }
+      return up;
+    }
+    prev = e;
+  }
+  return undefined;
+}
+
+/**
  * Elbow flexion at keyframe `k` that sets the left forearm at `targetDeg` off the cable (side view), with every other
  * joint as keyed and the hand kept on the bar. Lets Motion Lab change the shoulder or trunk at a keyframe while the
  * forearm keeps its direction (Tony, 2026-10-10): the elbow bend follows. Searches outward from the keyed bend and

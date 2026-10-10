@@ -10,6 +10,8 @@ import {
   evaluatePulldownRep,
   elbowFlexionHoldingForearm,
   jointsAt,
+  pulldownArmOnBar,
+  elbowFlexionReachingBar,
   PULLDOWN_JOINT_NAMES,
   PULLDOWN_KEY_AT,
   pulldownForearmToCableDeg,
@@ -414,5 +416,20 @@ describe("grip from arm lengths", () => {
         const [lo, hi] = jointLimits(name as keyof typeof JOINT_MOTIONS);
         for (const x of keys) expect(x >= lo && x <= hi).toBe(true);
       }
+  });
+
+  it("flares the elbows out at the top by bending them, hands kept on the bar (Tony, 2026-10-10)", () => {
+    const p = pulldownProfileFor("neutral_bar");
+    const flared = { ...p, joints: { ...p.joints, shoulder_plane_of_elevation: p.joints.shoulder_plane_of_elevation.map((x, i) => (i === 0 ? 45 : x)) } };
+    // As keyed the hand can't reach the bar, so the plane gets pulled back toward the front…
+    expect(pulldownArmOnBar(flared, 0).shoulderPlaneOfElevationDeg).toBeGreaterThan(50);
+    // …bending the elbow keeps the flare, with more internal rotation than the baseline top.
+    const e = elbowFlexionReachingBar(flared, 0)!;
+    expect(e).toBeGreaterThan(p.joints.elbow_flexion[0]!);
+    const bent = { ...flared, joints: { ...flared.joints, elbow_flexion: flared.joints.elbow_flexion.map((x, i) => (i === 0 ? e + 0.1 : x)) } };
+    const arm = pulldownArmOnBar(bent, 0);
+    expect(arm.shoulderPlaneOfElevationDeg).toBeCloseTo(45, 1);
+    expect(arm.shoulderRotationDeg).toBeLessThan(pulldownArmOnBar(p, 0).shoulderRotationDeg - 20);
+    expect(elbowFlexionReachingBar(p, 0)).toBe(p.joints.elbow_flexion[0]);
   });
 });
