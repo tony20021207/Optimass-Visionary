@@ -8,6 +8,7 @@ import { PoseOverlay } from "../session/PoseOverlay";
 import { RepVideo } from "../session/RepVideo";
 import { TrackingPanel } from "../session/TrackingPanel";
 import { usePoseTracking } from "../session/use-pose-tracking";
+import type { TrackingHosting } from "../session/use-pose-tracking";
 import { formatLimit, formatValue, resultsForClaude } from "./form-report";
 import type { CheckView, FormReportView, RepView } from "./form-report";
 
@@ -27,18 +28,21 @@ export function FormCheck({
   variations,
   analyze,
   trackPose = true,
+  hosting,
 }: {
   variations: Variation[];
   /** Tier 1 on a tracked set, for one grip variation. */
   analyze: (sequence: PoseSequence, variation: string) => FormReportView;
   /** Run MediaPipe on the video. Off in tests. */
   trackPose?: boolean;
+  /** Where MediaPipe's files come from, for hosts other than the web app. */
+  hosting?: TrackingHosting;
 }) {
   const [variation, setVariation] = useState(variations[0]!.id);
   const [video, setVideo] = useState<{ url: string; name: string; durationSec?: number } | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [showSkeleton, setShowSkeleton] = useState(true);
-  const tracking = usePoseTracking(trackPose ? (video?.url ?? null) : null, "lat_pulldown", attempt);
+  const tracking = usePoseTracking(trackPose ? (video?.url ?? null) : null, "lat_pulldown", attempt, hosting);
 
   useEffect(() => () => void (video && URL.revokeObjectURL(video.url)), [video]);
 

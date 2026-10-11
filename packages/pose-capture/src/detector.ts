@@ -8,8 +8,15 @@ export interface PoseDetector {
 }
 
 /** Starts the MediaPipe worker and resolves once the model is loaded. */
-export async function createWorkerDetector(wasmBaseUrl: string, modelUrl: string): Promise<PoseDetector & { delegate: "GPU" | "CPU" }> {
-  const worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module", name: "pose-landmarker" });
+export async function createWorkerDetector(
+  wasmBaseUrl: string,
+  modelUrl: string,
+  /** A prebuilt worker script speaking ./protocol, for hosts that can't bundle ./worker.ts (e.g. a static page). */
+  workerUrl?: string,
+): Promise<PoseDetector & { delegate: "GPU" | "CPU" }> {
+  const worker = workerUrl
+    ? new Worker(workerUrl, { name: "pose-landmarker" })
+    : new Worker(new URL("./worker.ts", import.meta.url), { type: "module", name: "pose-landmarker" });
   const pending = new Map<number, { resolve: (p: RawPose | null) => void; reject: (e: Error) => void }>();
   let nextId = 0;
 

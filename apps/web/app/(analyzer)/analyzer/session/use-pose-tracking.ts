@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { DEFAULT_MIN_VISIBILITY, NoPoseFoundError, processVideo, trackingQuality } from "@optimass/pose-capture";
+import type { CaptureOptions } from "@optimass/pose-capture";
 import type { PoseLandmarkName, PoseSequence } from "@optimass/types";
 
 export type PoseTracking =
@@ -41,7 +42,10 @@ export function summarize(sequence: Pick<PoseSequence, "frames">, framesSampled:
  * Runs MediaPipe over the set video on the phone, in a hidden copy of the video so the lifter can keep watching.
  * Starts when `url` is set; `attempt` changes to retry.
  */
-export function usePoseTracking(url: string | null, exerciseId: string, attempt = 0): PoseTracking {
+/** Where MediaPipe's files come from, when not the web app's defaults. */
+export type TrackingHosting = Pick<CaptureOptions, "wasmBasePath" | "modelUrl" | "workerUrl">;
+
+export function usePoseTracking(url: string | null, exerciseId: string, attempt = 0, hosting?: TrackingHosting): PoseTracking {
   const [state, setState] = useState<PoseTracking>({ status: "idle" });
 
   useEffect(() => {
@@ -64,6 +68,7 @@ export function usePoseTracking(url: string | null, exerciseId: string, attempt 
 
     setState({ status: "running", progress: 0 });
     processVideo(video, {
+      ...hosting,
       exerciseId,
       signal: abort.signal,
       cameraView: "sagittal", // TODO: "posterolateral" once Tony adds it to CameraView on main.
@@ -84,6 +89,7 @@ export function usePoseTracking(url: string | null, exerciseId: string, attempt 
       abort.abort();
       video.remove();
     };
+    // `hosting` is fixed for a page's life; listing it would restart tracking on every render.
   }, [url, exerciseId, attempt]);
 
   return state;

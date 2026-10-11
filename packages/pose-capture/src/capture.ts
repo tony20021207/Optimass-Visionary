@@ -19,6 +19,10 @@ export interface CaptureOptions {
   model?: PoseModel;
   /** Where the web app serves MediaPipe's WASM files. */
   wasmBasePath?: string;
+  /** Model file URL, overriding `model`. */
+  modelUrl?: string;
+  /** Prebuilt worker script to use instead of this package's worker (see createWorkerDetector). */
+  workerUrl?: string;
   /** One Euro filter settings, or false to keep MediaPipe's output as is. */
   smoothing?: OneEuroParams | false;
   /** Share of an uploaded video processed so far (0..1). */
@@ -43,7 +47,7 @@ export interface PoseCapture {
 
 /** Swappable parts, so the loop can be tested without a browser, camera or model. */
 export interface CaptureDeps {
-  createDetector?: (options: Required<Pick<CaptureOptions, "model" | "wasmBasePath">>) => Promise<PoseDetector>;
+  createDetector?: (options: Required<Pick<CaptureOptions, "model" | "wasmBasePath">> & Pick<CaptureOptions, "modelUrl" | "workerUrl">) => Promise<PoseDetector>;
   openSource?: (source: HTMLVideoElement | MediaStream, fps: number, signal: AbortSignal) => Promise<FrameSource>;
 }
 
@@ -63,7 +67,7 @@ export function createPoseCapture(options: CaptureOptions, deps: CaptureDeps = {
   const minVisibility = options.minVisibility ?? DEFAULT_MIN_VISIBILITY;
   const sampleFps = options.sampleFps ?? DEFAULT_SAMPLE_FPS;
   const createDetector =
-    deps.createDetector ?? ((o) => createWorkerDetector(o.wasmBasePath, POSE_MODEL_URLS[o.model]));
+    deps.createDetector ?? ((o) => createWorkerDetector(o.wasmBasePath, o.modelUrl ?? POSE_MODEL_URLS[o.model], o.workerUrl));
   const openSource =
     deps.openSource ?? ((s, fps, signal) => (isStream(s) ? cameraSource(s, signal) : videoFileSource(s, fps, signal)));
 
@@ -112,7 +116,12 @@ export function createPoseCapture(options: CaptureOptions, deps: CaptureDeps = {
     async start(source) {
       if (started) throw new Error("This capture was already started; create a new one");
       started = true;
-      detector = await createDetector({ model: options.model ?? "full", wasmBasePath: options.wasmBasePath ?? DEFAULT_WASM_BASE_PATH });
+      detector = await createDetector({
+        model: options.model ?? "full",
+        wasmBasePath: options.wasmBasePath ?? DEFAULT_WASM_BASE_PATH,
+        modelUrl: options.modelUrl,
+        workerUrl: options.workerUrl,
+      });
       let src: FrameSource;
       try {
         src = await openSource(source, sampleFps, abort.signal);
