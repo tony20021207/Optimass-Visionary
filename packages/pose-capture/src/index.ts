@@ -1,26 +1,14 @@
-import type { CameraView, PoseFrame, PoseSequence } from "@optimass/types";
-
 export const MODULE = "M4" as const;
 
-export interface CaptureOptions {
-  exerciseId: string;
-  cameraView: CameraView;
-  /** Landmarks below this visibility are treated as missing. */
-  minVisibility?: number;
-}
-
-export interface PoseCapture {
-  /** Called for every processed frame. Returns an unsubscribe function. */
-  onFrame(listener: (frame: PoseFrame) => void): () => void;
-  start(source: HTMLVideoElement | MediaStream): Promise<void>;
-  /** Stops capture and returns everything captured so far. */
-  stop(): PoseSequence;
-}
-
-const notImplemented = (fn: string): never => {
-  throw new Error(`${fn} is not implemented yet (M4, see docs/specs/M4.md)`);
-};
-
-export function createPoseCapture(_options: CaptureOptions): PoseCapture {
-  return notImplemented("createPoseCapture");
-}
+export { createPoseCapture, processVideo, NoPoseFoundError } from "./capture";
+export type { CaptureDeps, CaptureOptions, PoseCapture } from "./capture";
+export { DEFAULT_MIN_VISIBILITY, DEFAULT_SAMPLE_FPS, DEFAULT_WASM_BASE_PATH, POSE_MODEL_URLS, WASM_FILES } from "./config";
+export type { PoseModel } from "./config";
+export type { PoseDetector } from "./detector";
+export { createFrameSmoother, lowVisibilityLandmarks, toPoseFrame } from "./frames";
+export type { RawLandmark, RawPose } from "./frames";
+export { DEFAULT_ONE_EURO, OneEuroFilter } from "./one-euro";
+export type { OneEuroParams } from "./one-euro";
+export type { FrameSource, SourceFrame } from "./sources";
+export { trackingQuality } from "./quality";
+export type { TrackingQuality } from "./quality";

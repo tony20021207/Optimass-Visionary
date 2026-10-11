@@ -10,6 +10,7 @@ import { FilmStep } from "./FilmStep";
 import { FeedbackStep } from "./FeedbackStep";
 import { ReviewStep } from "./ReviewStep";
 import { SessionSummary } from "./SessionSummary";
+import { usePoseTracking } from "./use-pose-tracking";
 
 export interface SetRecord {
   videoUrl: string;
@@ -26,6 +27,7 @@ export function SetSession({
   tier2,
   totalSets,
   sampleVideoUrl,
+  trackPose = true,
 }: {
   exerciseLabel: string;
   /** Offers a "Use a sample video" button, for previews where recording isn't possible. */
@@ -33,11 +35,15 @@ export function SetSession({
   coaching: CoachingTable;
   tier2: Tier2Rules;
   totalSets: number;
+  /** Run MediaPipe on each set video. Off in tests, which have no worker or model. */
+  trackPose?: boolean;
 }) {
   const [sets, setSets] = useState<SetRecord[]>([]);
   const [step, setStep] = useState<Step>("film");
   const [video, setVideo] = useState<{ url: string; name: string; durationSec?: number } | null>(null);
   const [analysis, setAnalysis] = useState<SetAnalysis | null>(null);
+  const [trackingAttempt, setTrackingAttempt] = useState(0);
+  const tracking = usePoseTracking(trackPose ? (video?.url ?? null) : null, coaching.exerciseId, trackingAttempt);
 
   // Object URLs keep each video in memory; release them all when the page goes away.
   const objectUrls = useRef<string[]>([]);
@@ -62,7 +68,8 @@ export function SetSession({
         <SetDots total={totalSets} done={sets.length} current={step === "done" ? null : setNumber} />
       </header>
       <p className="rounded-lg bg-surface-muted px-3 py-2 text-xs text-ink-muted">
-        Preview: videos aren&apos;t analysed yet, so form errors are sample data. Cues and causes are placeholders.
+        Preview: your body is tracked on this phone, but the form checks aren&apos;t connected yet, so form errors are sample data. Cues
+        and causes are placeholders.
       </p>
 
       {step === "film" && (
@@ -78,6 +85,8 @@ export function SetSession({
           }}
           onSample={sampleVideoUrl ? () => setVideo({ url: sampleVideoUrl, name: "sample" }) : undefined}
           onDuration={(durationSec) => setVideo((v) => (v ? { ...v, durationSec } : v))}
+          tracking={tracking}
+          onRetryTracking={() => setTrackingAttempt((n) => n + 1)}
           onNext={() => {
             setAnalysis(analyzeSetDemo(sets.length, coaching.phases, video?.durationSec));
             setStep("feedback");

@@ -22,7 +22,7 @@ beforeAll(() => {
 });
 afterEach(cleanup);
 
-const renderSession = () => render(<SetSession exerciseLabel="Lat pulldown" coaching={coaching} tier2={tier2} totalSets={3} />);
+const renderSession = () => render(<SetSession exerciseLabel="Lat pulldown" coaching={coaching} tier2={tier2} totalSets={3} trackPose={false} />);
 
 const filmSet = () => {
   const input = screen.getByLabelText(/record or choose a video/i);
