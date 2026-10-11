@@ -1,0 +1,15 @@
+{
+  "exerciseId": "lat_pulldown",
+  "version": "0.1.0-placeholder",
+  "reviewedBy": null,
+  "note": "PLACEHOLDER tolerances by Claude (2026-10-11), not clinical values; Tony to set. A joint is 'off' at a key when it differs from the user's good rep by more than its tolerance. Score per joint per key = 1 - |difference| / (2 x tolerance), floored at 0; rep score = 100 x the mean.",
+  "joints": {
+    "trunk_flexion": { "tolerance": 8, "unit": "deg" },
+    "shoulder_elevation": { "tolerance": 12, "unit": "deg" },
+    "shoulder_plane_of_elevation": { "tolerance": 15, "unit": "deg" },
+    "shoulder_rotation": { "tolerance": 20, "unit": "deg" },
+    "elbow_flexion": { "tolerance": 10, "unit": "deg" },
+    "scapular_elevation": { "tolerance": 0.06, "unit": "x shoulder width" },
+    "scapular_protraction": { "tolerance": 0.05, "unit": "x trunk length" }
+  }
+}
