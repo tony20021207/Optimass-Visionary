@@ -1,0 +1,238 @@
+# Tier 2 (M6b) root-cause mappings for the lat pulldown.
+#
+# DRAFT FOR TONY TO REVIEW. Every clinical mapping, weight and screening test below is a
+# PLACEHOLDER written to exercise the engine. None of it is a confirmed clinical reference.
+# Edit this file freely; the engine in packages/diagnostics/src/tier2 reads it and validates it with Zod.
+#
+# How the engine scores a cause (see packages/diagnostics/src/tier2/infer.ts):
+#   - A pattern matches when every error code in `all` is present among the clip's Tier 1 findings.
+#   - Pattern strength = weight x severityMultiplier[worst matched severity] x mean confidence of matched findings.
+#   - likelihood = 1 - (1 - baseline) x product over matched patterns of (1 - strength)   (noisy-OR)
+#   - Only causes with at least one matched pattern become hypotheses.
+#   - Rank: likelihood (high first), then number of findings explained, then order in this file.
+#   So give combined patterns (e.g. two errors seen together) a higher weight than either error alone
+#   when the combination points more strongly at one cause.
+
+version: "0.1.0-placeholder"
+exerciseId: lat_pulldown
+
+# Worst-severity multiplier applied to a matched pattern. PLACEHOLDER values.
+severityMultiplier:
+  minor: 0.6
+  moderate: 0.8
+  major: 1.0
+
+# Tier 1 error codes Tier 2 understands for this lift. The Tier 1 rules (vision lane) must emit these
+# exact `errorCode` slugs. `view` is the camera view the Tier 1 rule is expected to need (informational here).
+errorCodes:
+  lumbar_hyperextension:
+    label: Lower back arches as the arms reach overhead
+    view: sagittal
+  incomplete_top_rom:
+    label: Arms don't reach full overhead extension at the top of the rep
+    view: sagittal
+  excessive_torso_lean:
+    label: Torso leans back past the set-up angle during the pull
+    view: sagittal
+  forward_head:
+    label: Head pokes forward during the pull
+    view: sagittal
+  shoulder_elevation:
+    label: Shoulders shrug toward the ears during the pull
+    view: frontal
+  humeral_anterior_glide:
+    label: Shoulders roll forward as the elbows pass behind the torso at the bottom
+    view: sagittal
+  asymmetric_pull:
+    label: One side pulls lower or faster than the other
+    view: frontal
+  incomplete_bottom_rom:
+    label: Bar stops short of the upper chest (around chin height) at the bottom
+    view: sagittal
+  fast_eccentric:
+    label: Bar rises back up faster than a controlled lowering
+    view: sagittal
+
+screeningTests:
+  lat_length_test:
+    name: Supine shoulder flexion (lat length) test (PLACEHOLDER)
+    procedure: >-
+      TODO(Tony): confirm. Lying on the back with knees bent and the low back held flat, raise both
+      straight arms overhead toward the floor.
+    positiveCriterion: >-
+      TODO(Tony): confirm. Arms can't reach the floor without the low back lifting off the surface.
+  thoracic_extension_screen:
+    name: Seated thoracic extension screen (PLACEHOLDER)
+    procedure: >-
+      TODO(Tony): confirm. Sitting tall with hands behind the head and the pelvis neutral, extend the
+      upper back over the chair back.
+    positiveCriterion: >-
+      TODO(Tony): confirm. Little visible upper-back extension, or extension only comes from the low back.
+  scapular_depression_hold:
+    name: Lower trapezius / scapular depression test (PLACEHOLDER)
+    procedure: >-
+      TODO(Tony): confirm. Prone with the arm in line with the lower trapezius fibres, hold the arm
+      lifted against light resistance; also observe an unloaded scapular depression hold.
+    positiveCriterion: >-
+      TODO(Tony): confirm. Weak or painful hold, or upper trap takes over (shoulder shrugs) during the hold.
+  reduced_load_retest:
+    name: Reduced-load retest (PLACEHOLDER)
+    procedure: >-
+      TODO(Tony): confirm the load drop. Repeat the set with a clearly lighter stack weight and a
+      controlled tempo, filmed from the same view.
+    positiveCriterion: >-
+      TODO(Tony): confirm. The error disappears or clearly shrinks at the lighter load.
+  pec_minor_length_test:
+    name: Pec minor length test (PLACEHOLDER)
+    procedure: >-
+      TODO(Tony): confirm. Lying on the back, arms by the sides; measure the distance from the back of
+      the shoulder (acromion) to the table on each side.
+    positiveCriterion: >-
+      TODO(Tony): confirm the cut-off. The shoulder rests noticeably off the table, or more on one side.
+  unilateral_flexion_comparison:
+    name: Side-to-side shoulder flexion and single-arm pull comparison (PLACEHOLDER)
+    procedure: >-
+      TODO(Tony): confirm. Compare active shoulder flexion range left vs right, then compare a
+      single-arm pulldown at the same load for reps and control.
+    positiveCriterion: >-
+      TODO(Tony): confirm the asymmetry cut-off. A clear range or strength difference on the side that
+      lagged in the clip.
+  tempo_retest:
+    name: Cued-tempo retest (PLACEHOLDER)
+    procedure: >-
+      TODO(Tony): confirm the tempo. Repeat the set at the same load with a counted lowering phase
+      (e.g. a slow count on the way up), filmed from the same view.
+    positiveCriterion: >-
+      TODO(Tony): confirm. With the cue, the lifter controls the lowering and the rest of the rep stays clean.
+  setup_check:
+    name: Machine set-up check (PLACEHOLDER)
+    procedure: >-
+      TODO(Tony): confirm. Check that the thigh pad locks the thighs down and the seat lets the arms
+      reach full extension at the top, then re-film one set.
+    positiveCriterion: >-
+      TODO(Tony): confirm. The error goes away after the set-up is corrected.
+
+causes:
+  - id: limited_shoulder_flexion_mobility
+    category: mobility
+    label: Limited overhead shoulder range (lats / teres major short) (PLACEHOLDER)
+    structures:
+      muscles: [latissimus_dorsi, teres_major]
+      joints: [glenohumeral]
+    screeningTest: lat_length_test
+    baseline: 0.05
+    patterns:
+      - all: [lumbar_hyperextension, incomplete_top_rom]
+        weight: 0.75
+      - all: [lumbar_hyperextension]
+        weight: 0.35
+      - all: [incomplete_top_rom]
+        weight: 0.3
+
+  - id: limited_thoracic_extension
+    category: mobility
+    label: Stiff upper back limits overhead reach (PLACEHOLDER)
+    structures:
+      muscles: []
+      joints: [thoracic_spine]
+    screeningTest: thoracic_extension_screen
+    baseline: 0.05
+    patterns:
+      - all: [lumbar_hyperextension, forward_head]
+        weight: 0.6
+      - all: [lumbar_hyperextension]
+        weight: 0.25
+      - all: [forward_head]
+        weight: 0.25
+
+  - id: poor_scapular_depression_control
+    category: motor_control
+    label: Poor control of shoulder-blade depression (lower trap under-active, upper trap dominant) (PLACEHOLDER)
+    structures:
+      muscles: [lower_trapezius, upper_trapezius]
+      joints: [scapulothoracic]
+    screeningTest: scapular_depression_hold
+    baseline: 0.05
+    patterns:
+      - all: [shoulder_elevation]
+        weight: 0.55
+      - all: [shoulder_elevation, forward_head]
+        weight: 0.3
+      - all: [shoulder_elevation, incomplete_bottom_rom]
+        weight: 0.5
+      - all: [incomplete_bottom_rom]
+        weight: 0.3
+
+  - id: load_exceeds_capacity
+    category: technique
+    label: Load is too heavy for clean reps, so momentum and body English take over (PLACEHOLDER)
+    structures:
+      muscles: [latissimus_dorsi]
+      joints: []
+    screeningTest: reduced_load_retest
+    baseline: 0.1
+    patterns:
+      - all: [excessive_torso_lean, shoulder_elevation]
+        weight: 0.7
+      - all: [excessive_torso_lean]
+        weight: 0.45
+      - all: [asymmetric_pull]
+        weight: 0.15
+      - all: [incomplete_bottom_rom, fast_eccentric]
+        weight: 0.6
+      - all: [incomplete_bottom_rom]
+        weight: 0.3
+      - all: [fast_eccentric]
+        weight: 0.3
+
+  - id: tight_pec_minor
+    category: mobility
+    label: Short pec minor pulls the shoulders forward at the bottom (PLACEHOLDER)
+    structures:
+      muscles: [pectoralis_minor]
+      joints: [scapulothoracic, glenohumeral]
+    screeningTest: pec_minor_length_test
+    baseline: 0.05
+    patterns:
+      - all: [humeral_anterior_glide]
+        weight: 0.5
+      - all: [humeral_anterior_glide, forward_head]
+        weight: 0.3
+
+  - id: side_to_side_asymmetry
+    category: strength
+    label: One side's lats are weaker or less mobile than the other (PLACEHOLDER)
+    structures:
+      muscles: [latissimus_dorsi]
+      joints: [glenohumeral]
+    screeningTest: unilateral_flexion_comparison
+    baseline: 0.05
+    patterns:
+      - all: [asymmetric_pull]
+        weight: 0.55
+
+  - id: uncontrolled_lowering_habit
+    category: technique
+    label: Lets the weight pull the arms back up instead of lowering it under control (PLACEHOLDER)
+    structures:
+      muscles: [latissimus_dorsi]
+      joints: [glenohumeral]
+    screeningTest: tempo_retest
+    baseline: 0.05
+    patterns:
+      - all: [fast_eccentric]
+        weight: 0.4
+
+  - id: machine_setup
+    category: equipment
+    label: Seat or thigh pad set-up lets the body move or blocks full reach (PLACEHOLDER)
+    structures:
+      muscles: []
+      joints: []
+    screeningTest: setup_check
+    baseline: 0.05
+    patterns:
+      - all: [excessive_torso_lean]
+        weight: 0.2
+      - all: [incomplete_top_rom]
+        weight: 0.2

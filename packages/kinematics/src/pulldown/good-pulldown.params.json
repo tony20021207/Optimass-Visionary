@@ -1,0 +1,248 @@
+{
+  "$comment": "Tier 1 form detection parameters for the lat pulldown. DRAFT for Tony to edit. Every number is a PLACEHOLDER picked so the synthetic good rep passes and each synthetic fault fails; none is a clinical or literature value yet. Set min and/or max per check; leave both out to report the number without judging it. Feature definitions: src/pulldown/features.ts. `fault` values are Tier 1 error codes and match content/rules/tier2/lat_pulldown.yaml where that file has a code; incomplete_bottom_rom and fast_eccentric are not in it yet. lumbar_hyperextension and humeral_anterior_glide have no check: MediaPipe has no spine or scapula/humeral-head landmarks to separate them from trunk lean and shoulder movement. `variations` (Tony, 2026-10-10) changes limits for one grip variation (PULLDOWN_SETUPS id): a number replaces the shared limit, null removes it; read through pulldownParamsFor. Once the Tier 1 rule schema exists (M6a) this moves to content/rules/tier1/.",
+  "exerciseId": "lat_pulldown",
+  "version": "0.1.0-draft",
+  "reviewedBy": null,
+  "checks": [
+    {
+      "id": "full_stretch_at_top",
+      "feature": "elbow_flexion_top_deg",
+      "max": 15,
+      "fault": "incomplete_top_rom",
+      "why": "Elbows should be close to straight at the top so the lats reach a lengthened position.",
+      "placeholder": true
+    },
+    {
+      "id": "arms_overhead_at_top",
+      "feature": "humerothoracic_elevation_top_deg",
+      "min": 135,
+      "fault": "incomplete_top_rom",
+      "why": "Upper arm should be well overhead at the top (shoulder flexion/abduction near end range).",
+      "placeholder": true
+    },
+    {
+      "id": "bar_reaches_chest",
+      "feature": "bar_bottom_rel_shoulder_x_arm",
+      "max": 0.32,
+      "fault": "incomplete_bottom_rom",
+      "why": "Bar should come down at least to chin level. In arm lengths so it scales with the lifter (Tony, 2026-10-10): 0.32 = the old 0.18 m on the synthetic lifter's ~0.57 m arm. Loosened from 0.05 m when the bottom was redefined by the elbows reaching the trunk line (Tony, 2026-10-07).",
+      "placeholder": true
+    },
+    {
+      "id": "arms_down_at_bottom",
+      "feature": "humerothoracic_elevation_bottom_deg",
+      "max": 65,
+      "fault": "incomplete_bottom_rom",
+      "why": "Upper arms should finish close to the trunk (shoulder adduction/extension near end range).",
+      "placeholder": true
+    },
+    {
+      "id": "elbows_reach_trunk_line",
+      "feature": "humerus_behind_trunk_bottom_deg",
+      "min": -5,
+      "fault": "incomplete_bottom_rom",
+      "why": "At the bottom the elbows should reach the trunk line (upper arm in the trunk's frontal plane).",
+      "placeholder": true
+    },
+    {
+      "id": "elbows_stop_near_trunk_line",
+      "feature": "humerus_behind_trunk_bottom_deg",
+      "max": 15,
+      "fault": "excessive_shoulder_extension",
+      "why": "Stop just past the trunk line: once the whole arm rotates back around the shoulder, the extra range is shoulder hyperextension, not more lat work (Tony, 2026-10-07).",
+      "placeholder": true
+    },
+    {
+      "id": "pull_along_line",
+      "feature": "pull_line_deg",
+      "min": 10,
+      "max": 18,
+      "fault": "bar_path_off_line",
+      "why": "Bar should travel down a line about 12-15 deg off vertical, from ahead of the face to the upper chest (Tony, 2026-10-07). Limits padded for tracking noise.",
+      "placeholder": true
+    },
+    {
+      "id": "forearms_on_line",
+      "feature": "forearm_off_line_deg",
+      "max": 10,
+      "fault": "forearm_off_line",
+      "why": "Seen from the side, forearms should stay on the line of pull until the bottom of the rep (Tony, 2026-10-07).",
+      "placeholder": true
+    },
+    {
+      "id": "forearms_on_line_front",
+      "feature": "forearm_front_tilt_max_deg",
+      "max": 15,
+      "fault": "forearm_off_line",
+      "why": "Seen from the front, forearms should stay parallel to the line of pull (vertical) over the bottom 80% of the pull; the top 20% is free for the elbows to straighten (Tony, 2026-10-09). The 2.2x baseline stays within about 10-11 deg; 15 leaves room for tracking noise.",
+      "placeholder": true
+    },
+    {
+      "id": "trunk_lean_reasonable",
+      "feature": "trunk_lean_mean_deg",
+      "min": 0,
+      "max": 30,
+      "fault": "excessive_torso_lean",
+      "why": "A slight lean back is normal; a big lean turns it into a row.",
+      "placeholder": true
+    },
+    {
+      "id": "trunk_stays_still",
+      "feature": "trunk_lean_range_deg",
+      "max": 24,
+      "fault": "excessive_torso_lean",
+      "why": "Trunk angle should change little within a rep; large changes mean the torso is swinging the weight. Raised from 12 to 24 when Tony's baseline swing became 18 deg (2026-10-09); the momentum swing variant is ~29.",
+      "placeholder": true
+    },
+    {
+      "id": "no_torso_rocking",
+      "feature": "trunk_lean_peak_vel_dps",
+      "max": 65,
+      "fault": "excessive_torso_lean",
+      "why": "Fast trunk extension during the pull is the signature of using momentum. Raised from 40 to 65 for the 18 deg baseline swing (good ~39 deg/s, momentum swing ~74).",
+      "placeholder": true
+    },
+    {
+      "id": "shoulders_depress",
+      "feature": "shoulder_depression_ratio",
+      "min": 0.03,
+      "fault": "shoulder_elevation",
+      "why": "Shoulders should move away from the ears (scapular depression) as the bar comes down.",
+      "placeholder": true
+    },
+    {
+      "id": "head_stays_in_line",
+      "feature": "head_forward_change_x_trunk",
+      "max": 0.095,
+      "fault": "forward_head",
+      "why": "The head should stay in line with the trunk instead of poking forward to meet the bar. In trunk lengths so it scales with the lifter (Tony, 2026-10-10): 0.095 = the old 0.05 m on the synthetic lifter's ~0.53 m trunk. Measured from the shoulder joints, so shoulder blade retraction also reads as head-forward (good rep up to ~0.08); forward head ~0.13+.",
+      "placeholder": true
+    },
+    {
+      "id": "elbow_follows_shoulder",
+      "feature": "elbow_lead_first_third",
+      "max": 0.28,
+      "fault": "early_elbow_flexion",
+      "why": "Elbow flexion should not run ahead of shoulder extension + adduction in the first third of the pull (Tier 2 sheet, error 1: biceps start the pull). Synthetic: good ~0.15-0.19 wide (~0.05-0.08 neutral bar), elbow leading ~0.4.",
+      "placeholder": true
+    },
+    {
+      "id": "shoulders_stay_back",
+      "feature": "shoulder_protraction_x_trunk",
+      "max": 0.04,
+      "fault": "scapular_protraction",
+      "why": "The shoulders should not roll forward (scapular protraction) as the arms finish (Tier 2 sheet, error 5). In trunk lengths. Rough: from the hip-to-ear line, so a forward head shifts it. Synthetic: good ≤0.03, protracting ~0.08-0.1.",
+      "placeholder": true
+    },
+    {
+      "id": "no_lockout_at_top",
+      "feature": "elbow_flexion_top_deg",
+      "min": 3,
+      "fault": "elbow_lockout_top",
+      "why": "Keep a slight elbow bend at the top instead of locking out (Tier 2 sheet, error 6; Tony's baseline ~11°). Video can't read hyperextension, so a locked or hyperextended elbow reads near 0. Synthetic: good ≥6 (noise), locked ~0-1.",
+      "placeholder": true
+    },
+    {
+      "id": "limited_internal_rotation_at_bottom",
+      "feature": "shoulder_rotation_bottom_deg",
+      "min": -66,
+      "fault": "shoulder_internal_rotation",
+      "why": "Shoulder internal rotation at the bottom should not go past the baseline's (Tier 2 sheet, error 8). Tony's wide baseline already sits ~52-56° internally rotated at the bottom (elbows flared on the bar). Synthetic: flaring further ~-77.",
+      "placeholder": true
+    },
+    {
+      "id": "controlled_eccentric",
+      "feature": "eccentric_s",
+      "min": 1.0,
+      "fault": "fast_eccentric",
+      "why": "The bar should be lowered under control. Measured over 95%-5% of travel, so ~1.0 s here is ~1.4 s end to end.",
+      "placeholder": true
+    },
+    {
+      "id": "no_yank",
+      "feature": "wrist_peak_acc_x_arm",
+      "max": 11.5,
+      "fault": "yanking",
+      "why": "The bar should build speed smoothly off the top, not be snapped down. In arm lengths per s² so it scales with the lifter (Tony, 2026-10-10): 11.5 = the old 6.5 m/s² on the synthetic lifter's ~0.57 m arm. Synthetic: good rep ~5 m/s² (other faults up to 5.4), momentum swing ~8, yanked ~10. Tony (2026-10-09): a torso swing counts as a yank too.",
+      "placeholder": true
+    },
+    {
+      "id": "bar_stays_level",
+      "feature": "bar_tilt_max_deg",
+      "max": 3.5,
+      "fault": "asymmetric_pull",
+      "why": "Both hands should arrive together; a tilted bar means one side is doing less. An angle, so it holds for any grip width and body size (Tony, 2026-10-10; was 0.04 m of wrist height difference). Good reps up to ~1.1° on every grip, elbows-forward close grip ~2.7°, one side lagging 5.3°+.",
+      "placeholder": true
+    },
+    {
+      "id": "elbows_match",
+      "feature": "elbow_flexion_asymmetry_deg",
+      "max": 10,
+      "fault": "asymmetric_pull",
+      "why": "Left and right elbow angles should track each other.",
+      "placeholder": true
+    },
+    {
+      "id": "smooth_pull",
+      "feature": "speed_dip_pct",
+      "max": 60,
+      "fault": "uneven_pacing",
+      "why": "The bar's speed should build to one peak and ease off, on the pull and on the return; a dip in between is a sticking point or hitch (Tony, 2026-10-10). Synthetic: smooth reps up to ~16% (narrow underhand shrug ~29%), the over-pull and elbows-forward faults ~38-50% (their bar path slows near the bottom on its own), a mid-pull sticking point ~74-81%.",
+      "placeholder": true
+    },
+    {
+      "id": "tempo_consistent",
+      "feature": "tempo_variation_pct",
+      "max": 10,
+      "fault": "inconsistent_tempo",
+      "why": "Reps in a set should keep the same tempo (Tony, 2026-10-10). Rep-to-rep variation of the pull or return time; synthetic steady sets ~0-4%, a set slowing 60% from first to last rep ~20%. Needs 2+ reps.",
+      "placeholder": true
+    },
+    { "id": "pace_pull_start", "feature": "concentric_part1_share", "why": "Reported only. Share of the pull's time spent on its first 25% of bar travel. Add min/max to enforce a pacing.", "placeholder": true },
+    { "id": "pace_pull_middle", "feature": "concentric_part2_share", "why": "Reported only. Share of the pull's time spent on its middle 50% of bar travel.", "placeholder": true },
+    { "id": "pace_pull_end", "feature": "concentric_part3_share", "why": "Reported only. Share of the pull's time spent on its last 25% of bar travel, into the bottom.", "placeholder": true },
+    { "id": "pace_return_start", "feature": "eccentric_part1_share", "why": "Reported only. Share of the return's time spent leaving the bottom (first 25% of travel back up).", "placeholder": true },
+    { "id": "pace_return_middle", "feature": "eccentric_part2_share", "why": "Reported only. Share of the return's time spent on its middle 50%.", "placeholder": true },
+    { "id": "pace_return_end", "feature": "eccentric_part3_share", "why": "Reported only. Share of the return's time spent reaching the stretch at the top (last 25%).", "placeholder": true },
+    { "id": "concentric_time", "feature": "concentric_s", "why": "Reported only.", "placeholder": true },
+    { "id": "bottom_pause_time", "feature": "bottom_pause_s", "why": "Reported only.", "placeholder": true },
+    { "id": "top_pause_time", "feature": "top_pause_s", "why": "Reported only. Add a min to require a stretch pause at the top.", "placeholder": true },
+    { "id": "peak_wrist_speed", "feature": "peak_wrist_speed_mps", "why": "Reported only.", "placeholder": true },
+    { "id": "peak_elbow_flexion_velocity", "feature": "peak_elbow_flexion_vel_dps", "why": "Reported only.", "placeholder": true },
+    { "id": "forearm_break_at_bottom", "feature": "forearm_off_line_bottom_deg", "why": "Reported only. How far the forearms leave the line of pull at the bottom; a slight break is expected (+ = elbows dropped behind the line).", "placeholder": true },
+    { "id": "grip_width", "feature": "grip_width_x_shoulder", "why": "Reported only. Default overhand grip is 2.0x shoulder width (Tony, 2026-10-07). MediaPipe shoulder points sit inside the acromions, so this reads slightly wide. Add a min/max to enforce a grip.", "placeholder": true },
+    { "id": "grip_matches_build", "feature": "grip_vs_recommended", "why": "Reported only. Grip width ÷ the grip recommended from the lifter's upper arm and forearm lengths (grip.ts). 1 = on target; needs the posture-check skeleton. Add a min/max (e.g. 0.95-1.05) to enforce it.", "placeholder": true },
+    { "id": "shoulder_blades_retract", "feature": "shoulder_narrowing_ratio", "why": "Reported only. Shoulder width lost from top to bottom (fraction), a proxy for scapular retraction; ~0.05-0.07 on the synthetic good rep. Downward rotation has no landmark of its own and shows up as depression. Add a min to require retraction.", "placeholder": true },
+    { "id": "elbow_yank", "feature": "elbow_peak_acc_dps2", "why": "Reported only. Elbow angular acceleration; noisier than the wrist (second derivative of an angle). Synthetic: good ~1.5-2k, yanked ~3.7-4.4k deg/s2.", "placeholder": true },
+    { "id": "shoulder_yank", "feature": "shoulder_peak_acc_dps2", "why": "Reported only. Upper-arm angular acceleration. Does not separate a yank from a close-grip pull on synthetic data.", "placeholder": true },
+    { "id": "trunk_yank", "feature": "trunk_peak_acc_dps2", "why": "Reported only. Trunk lean angular acceleration; too noisy on synthetic data to judge yet.", "placeholder": true },
+    { "id": "elbow_bend_at_bottom", "feature": "elbow_flexion_peak_deg", "why": "Reported only. Most elbow bend in the rep. Add a max to cap it; a wider grip lowers it for the same bar depth.", "placeholder": true },
+    { "id": "shoulder_extension", "feature": "shoulder_extension_deg", "why": "Reported only. Degrees of arm travel about the trunk's side-to-side axis (elbows down and back from in front).", "placeholder": true },
+    { "id": "shoulder_adduction", "feature": "shoulder_adduction_deg", "why": "Reported only. Degrees of arm travel about the trunk's front-to-back axis (elbows down to the sides from out wide).", "placeholder": true },
+    { "id": "extension_share", "feature": "extension_share", "why": "Reported only. 0 = pure adduction (wide frontal-plane pull), 1 = pure extension (elbows-forward sagittal pull). Add a min (e.g. 0.6) to require an extension-biased pull.", "placeholder": true },
+    { "id": "arm_plane_during_pull", "feature": "plane_of_elevation_mid_deg", "why": "Reported only. Where the elbows point during the pull: 0 = out to the sides, 90 = straight forward. Add a min to require elbows further in front.", "placeholder": true },
+    { "id": "elbow_forward_at_bottom", "feature": "elbow_forward_bottom_m", "why": "Reported only. Elbow ahead of the shoulder at the bottom (m); negative = behind the body.", "placeholder": true }
+  ],
+  "variations": {
+    "narrow_underhand": {
+      "full_stretch_at_top": { "max": 18, "why": "PLACEHOLDER set just past Tony's narrow underhand baseline (2026-10-10) over 4 camera angles and 3 noise seeds (top elbow bend up to ~16°)." },
+      "pull_along_line": { "min": 2, "max": 9, "why": "PLACEHOLDER set just past Tony's narrow underhand baseline (2026-10-10) over 4 camera angles and 3 noise seeds: the close grip pulls straighter down (~4.5-6° off vertical)." },
+      "forearms_on_line_front": { "max": 21, "why": "PLACEHOLDER set just past Tony's narrow underhand baseline (2026-10-10) over 4 camera angles and 3 noise seeds (up to ~19°, from the elbows swinging out over the last ~15% of the pull; open question to Tony)." },
+      "limited_internal_rotation_at_bottom": { "min": -90, "why": "PLACEHOLDER set past Tony's narrow underhand baseline (2026-10-10): ~66° internal at the bottom, read ~65-78° because the upper arm is nearly vertical there (12° elevation), which makes the reading noisy." },
+      "no_yank": { "max": 15.9, "why": "PLACEHOLDER set just past Tony's narrow underhand baseline (2026-10-10) over 4 camera angles and 3 noise seeds: 9 m/s² on the ~0.57 m arm (good rep up to ~7.7 m/s²; momentum swing ~12, yank ~15)." }
+    },
+    "neutral_bar": {
+      "full_stretch_at_top": { "max": 19, "why": "PLACEHOLDER set just past Tony's neutral bar baseline (2026-10-10, ~18:20Z) over 5 camera angles and 3 noise seeds (top elbow bend 16.9°, read up to ~18°)." },
+      "elbows_reach_trunk_line": { "min": -15, "why": "PLACEHOLDER set just past Tony's neutral bar baseline (2026-10-10): with the forearms on the cable the elbows stop ~12-14° in front of the trunk line. A partial pull (~-32°) still fails." },
+      "pull_along_line": { "min": 6, "max": 12, "why": "PLACEHOLDER set around Tony's neutral bar baseline (2026-10-10): the bar comes down ~8-10° off vertical; elbows drifting forward (~19°) still fails." },
+      "limited_internal_rotation_at_bottom": { "min": -46, "why": "PLACEHOLDER set past Tony's neutral bar baseline (2026-10-10): ~30° internal at the bottom, read ~30-38°." },
+      "no_yank": { "max": 14.1, "why": "PLACEHOLDER set just past Tony's neutral bar baseline (2026-10-10) with his pacing on: 8 m/s² on the ~0.57 m arm (good rep up to ~7.2 m/s²; yank ~10.4-11.5)." }
+    },
+    "close_v_bar": {
+      "elbows_reach_trunk_line": { "min": -22, "why": "PLACEHOLDER set past Claude's close-grip V-bar starting keys (2026-10-10): the elbows finish ~17-19° in front of the trunk line." },
+      "pull_along_line": { "min": -3, "max": 4, "why": "PLACEHOLDER set around Claude's close-grip V-bar starting keys (2026-10-10): the bar comes about straight down (~-1° to 1°)." },
+      "forearms_on_line": { "max": 13, "why": "PLACEHOLDER set past Claude's close-grip V-bar starting keys (2026-10-10): forearms ~9.5-10.5° off the cable." },
+      "forearms_on_line_front": { "max": 29, "why": "PLACEHOLDER set past Claude's close-grip V-bar starting keys (2026-10-10): hands sit inside the elbows, so the forearms tilt in ~24-26° from the front." }
+    }
+  }
+}

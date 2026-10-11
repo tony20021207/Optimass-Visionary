@@ -1,0 +1,50 @@
+[
+  {
+    "id": "f1",
+    "ruleId": "lat_pulldown_shoulder_elevation",
+    "exerciseId": "lat_pulldown",
+    "errorCode": "shoulder_elevation",
+    "label": "Shoulders shrug toward the ears during the pull (PLACEHOLDER)",
+    "requiredView": "frontal",
+    "severity": "moderate",
+    "side": "bilateral",
+    "repIndices": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "evidence": [
+      {
+        "metric": "acromion_elevation_ratio",
+        "value": 0,
+        "threshold": 0,
+        "unit": "ratio"
+      }
+    ],
+    "confidence": 0.75
+  },
+  {
+    "id": "f2",
+    "ruleId": "lat_pulldown_asymmetric_pull",
+    "exerciseId": "lat_pulldown",
+    "errorCode": "asymmetric_pull",
+    "label": "Left side pulls lower and faster than the right (PLACEHOLDER)",
+    "requiredView": "frontal",
+    "severity": "minor",
+    "side": "left",
+    "repIndices": [
+      2,
+      3
+    ],
+    "evidence": [
+      {
+        "metric": "wrist_height_asymmetry_ratio",
+        "value": 0,
+        "threshold": 0,
+        "unit": "ratio"
+      }
+    ],
+    "confidence": 0.6
+  }
+]

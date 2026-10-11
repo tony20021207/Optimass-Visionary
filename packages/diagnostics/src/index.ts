@@ -1,6 +1,20 @@
+import type { Tier2Rules } from "./tier2/infer";
+import { rankRootCauses } from "./tier2/infer";
 import type { CameraView, CorrectivePrescription, DiagnosticReport, KinematicFinding, RepSegment, RootCauseHypothesis } from "@optimass/types";
 
 export const MODULE = "M6" as const;
+
+export { parseTier2Rules, rankRootCauses } from "./tier2/infer";
+export type { Tier2Rules } from "./tier2/infer";
+export { Tier2Cause, Tier2Pattern, Tier2Table } from "./tier2/schema";
+export { coachSet, formatTime, parseCoachingTable } from "./coaching/coach";
+export type { Cue, CueKind, SetCoaching } from "./coaching/coach";
+export { CoachingTable, SetFeedback } from "./coaching/schema";
+export type { CoachingPhase } from "./coaching/schema";
+export { pickReviewRep } from "./coaching/pick-rep";
+export type { RepWindow } from "./coaching/pick-rep";
+/** Hand-written pulldown findings, used as stand-in Tier 1 output until real clips are analysed. */
+export { pulldownFrontalFindings, pulldownSagittalFindings } from "./tier2/fixtures";
 
 /** Kinematics output as diagnostics sees it (structurally matches @optimass/kinematics' KinematicAnalysis). */
 export interface KinematicInput {
@@ -13,6 +27,8 @@ export interface KinematicInput {
 /** Rule tables loaded from content/rules/tier1..tier3. */
 export interface RuleSet {
   version: { tier1: string; tier2: string; tier3: string };
+  /** Tier 2 tables (content/rules/tier2), parsed with parseTier2Rules. */
+  tier2?: Tier2Rules;
 }
 
 const notImplemented = (fn: string): never => {
@@ -28,9 +44,10 @@ export function detectFindings(_input: KinematicInput, _rules: RuleSet): Kinemat
   return notImplemented("detectFindings");
 }
 
-/** Tier 2 (M6b). */
-export function inferRootCauses(_findings: readonly KinematicFinding[], _rules: RuleSet): RootCauseHypothesis[] {
-  return notImplemented("inferRootCauses");
+/** Tier 2 (M6b). Ranked hypotheses (rank 1 = most likely), each with its confirming screening test. Never a diagnosis. */
+export function inferRootCauses(findings: readonly KinematicFinding[], rules: RuleSet): RootCauseHypothesis[] {
+  if (!rules.tier2) throw new Error("inferRootCauses needs rules.tier2 (parse content/rules/tier2 with parseTier2Rules)");
+  return rankRootCauses(findings, rules.tier2);
 }
 
 /** Tier 3 (M6c). */
