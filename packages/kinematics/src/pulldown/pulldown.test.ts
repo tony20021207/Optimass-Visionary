@@ -33,6 +33,7 @@ import {
   type PulldownSetup,
   pulldownSeries,
   segmentLength,
+  segmentPulldownReps,
   synthesizePulldown,
   type PulldownVariant,
 } from "./index";
@@ -99,6 +100,40 @@ describe("pulldown kinematics", () => {
     for (const rep of reps) expect(() => RepSegment.parse(rep)).not.toThrow();
     expect(Object.keys(series.metrics)).toContain("left_elbow_flexion_vel_dps");
     expect(Object.keys(series.metrics)).toContain("left_wrist_speed_mps");
+  });
+
+  // Real clips (Tier 2 thread, 2026-10-11): the top drifts between reps and the clip can end higher or lower than it began.
+  // Bar height built from (time s, height m) points joined by straight lines, 30 fps, small wobble.
+  const barClip = (points: [number, number][]) => {
+    const timestampsMs: number[] = [];
+    const h: number[] = [];
+    for (let f = 0; f / 30 <= points[points.length - 1]![0]; f++) {
+      const s = f / 30;
+      const k = points.findIndex((p, i) => i > 0 && p[0] >= s);
+      const [t0, h0] = points[k - 1]!;
+      const [t1, h1] = points[k]!;
+      timestampsMs.push(s * 1000);
+      h.push(h0 + ((h1 - h0) * (s - t0)) / (t1 - t0) + 0.004 * Math.sin(f * 1.7));
+    }
+    return { timestampsMs, metrics: { wrist_mid_height_m: h } };
+  };
+
+  it("finds a rep whose starting top is lower than where the clip ends", () => {
+    const reps = segmentPulldownReps(barClip([[0, 0.425], [5.4, 0.43], [7.6, -0.16], [9.5, -0.16], [13.8, 0.47], [14, 0.47]]));
+    expect(reps).toHaveLength(1);
+    const [pull, bottom, ret] = reps[0]!.phases;
+    expect(pull!.startMs / 1000).toBeGreaterThan(4.9);
+    expect(pull!.startMs / 1000).toBeLessThan(5.6);
+    expect(bottom!.startMs / 1000).toBeGreaterThan(7.2);
+    expect(ret!.endMs / 1000).toBeGreaterThan(12.5);
+  });
+
+  it("counts every rep when the top and bottom drift through the set, ignoring the hands-in-lap start", () => {
+    const reps = segmentPulldownReps(
+      barClip([[0, -0.3], [1, -0.3], [2, 0.45], [3, 0.45], [4.5, -0.15], [5, -0.15], [6.5, 0.4], [7, 0.4], [8.5, -0.08], [9, -0.08], [10.5, 0.48], [11, 0.48], [12.5, -0.12], [13, -0.12], [14.5, 0.38], [15, 0.38]]),
+    );
+    expect(reps).toHaveLength(3);
+    for (let i = 1; i < reps.length; i++) expect(reps[i]!.startFrame).toBeGreaterThanOrEqual(reps[i - 1]!.endFrame);
   });
 
   it("finds no reps when the bar does not move", () => {
