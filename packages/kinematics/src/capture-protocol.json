@@ -1,0 +1,66 @@
+{
+  "$comment": "How OptiMass expects clips to be filmed. Decided by Tony (2026-10-07): exercises at 45 degrees rear-side, posture check straight-on from 4 sides at a set distance and height. Synthetic clips, tests and the capture UI all read this file. Distances are meters, angles degrees.",
+  "version": "0.1.0",
+  "phone": {
+    "camera": "rear",
+    "lens": "main (1x)",
+    "facingMode": "environment",
+    "verticalFovDeg": 69,
+    "note": "Rear main camera only. Front cameras are usually mirrored (which swaps left and right in the analysis), wider-angle with more distortion, and lower quality; the ultrawide (0.5x) bends straight lines. 69 degrees is a typical 1x lens (about 26 mm equivalent) held in portrait, used to place synthetic cameras and check framing; real phones vary."
+  },
+  "exercise": {
+    "label": "Standard exercise view: 45° behind and to one side",
+    "azimuthDeg": 135,
+    "azimuthNote": "Measured around the lifter from straight in front (0), positive toward the lifter's left: 90 = left side, 180 = directly behind, 135 = behind-left. Behind-right (225) is equally valid; record which side was filmed.",
+    "cameraHeight": "movement_midpoint",
+    "cameraHeightNote": "Decided by Tony (2026-10-09): lens centred on the movement's vertical span (lowest to highest point of the moving body and hands), not on the body, so distortion is even top to bottom. Each exercise names its height below. Camera level, not tilted: the analysis takes image-down as gravity.",
+    "cameraHeightByExercise": {
+      "lat_pulldown": {
+        "height": "seated_shoulder",
+        "note": "Seated shoulder height: the midpoint between the seat and the hands overhead."
+      }
+    },
+    "distanceBodyHeights": 1.5,
+    "distanceNote": "Decided by Tony (2026-10-09): camera 1.5 x the user's height away (e.g. 2.6 m for a 1.75 m user), measured along the floor from the lens to the lifter. A 1x portrait lens frames about 1.37 x the distance vertically, so this keeps the whole body, including the hands at their highest point, in frame with room to spare.",
+    "exceptions": []
+  },
+  "postureScreen": {
+    "label": "Standing posture check before analysis: straight-on (90°) views",
+    "views": [
+      {
+        "id": "anterior",
+        "azimuthDeg": 0
+      },
+      {
+        "id": "posterior",
+        "azimuthDeg": 180
+      },
+      {
+        "id": "left",
+        "azimuthDeg": 90
+      },
+      {
+        "id": "right",
+        "azimuthDeg": 270
+      }
+    ],
+    "holdSeconds": 3,
+    "distanceBodyHeights": 1,
+    "distanceNote": "Camera exactly 1 x the user's height away (e.g. 1.75 m for a 1.75 m user), measured floor-to-floor from the lens to the user's feet. A known distance and height let us convert image measurements to real units and correct perspective.",
+    "cameraHeight": "hip",
+    "cameraHeightNote": "Lens at the user's hip height (mid-body), camera level. Centring the lens on the body keeps head and feet at similar angles to it, so perspective distortion is lowest and the whole body fits at 1 body height with a normal (1x) phone lens. Shoulder height at this distance cuts off the feet.",
+    "stanceNote": "Relaxed standing, feet hip-width, arms by the sides, looking straight ahead.",
+    "scapula": {
+      "label": "Optional shoulder-blade step (Tony, 2026-10-10), after the 4 views, only with the user's consent (see consent in posture/scapula-predictions.json)",
+      "clothing": "Upper back bare: shirt off or a sports bra",
+      "still": "Back view, same placement as the posterior posture view (1 body height away, lens at hip height, level), arms relaxed. Spine roots and inferior angles are tapped on this photo.",
+      "dynamic": {
+        "view": "Back view, same placement",
+        "movement": "Raise both arms forward to overhead and lower them, thumbs up, slowly",
+        "reps": 5,
+        "note": "Graded for winging and anterior tilt per side (normal / subtle / obvious). Reps and any added weight are PLACEHOLDERS for Tony to set."
+      },
+      "privacy": "Analyse on the phone where possible; keep only the measurements unless the user opts in to keep the media."
+    }
+  }
+}

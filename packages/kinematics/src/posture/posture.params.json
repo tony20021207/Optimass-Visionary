@@ -1,0 +1,94 @@
+{
+  "$comment": "Tier 1 standing posture check parameters. DRAFT for Tony to edit. Every number is a PLACEHOLDER picked so the synthetic neutral posture passes and each synthetic deviation fails; none is a clinical or literature value yet. Sagittal features are taken from the left/right views, frontal ones from the front/back views (see metrics.ts). Distances are meters, angles degrees.",
+  "version": "0.1.0-draft",
+  "reviewedBy": null,
+  "checks": [
+    {
+      "id": "head_forward",
+      "feature": "head_forward_deg",
+      "max": 11,
+      "finding": "forward_head_posture",
+      "why": "Ears should sit roughly over the shoulders from the side. An angle so it holds for any body size (Tony, 2026-10-10): 11° = the old 0.04 m on the synthetic lifter (~0.2 m shoulder to ear).",
+      "placeholder": true
+    },
+    {
+      "id": "shoulders_over_hips",
+      "feature": "shoulders_forward_deg",
+      "min": -4.5,
+      "max": 4.5,
+      "finding": "rounded_shoulders",
+      "why": "Shoulders should sit roughly over the hips from the side. Forward = rounded shoulders or thoracic flexion; MediaPipe can't tell which. An angle so it holds for any body size (Tony, 2026-10-10): 4.5° = the old 0.04 m on the synthetic lifter's ~0.5 m trunk.",
+      "placeholder": true
+    },
+    {
+      "id": "left_knee_not_locked_back",
+      "feature": "left_knee_hyperextension_deg",
+      "max": 5,
+      "finding": "knee_hyperextension",
+      "why": "Knee should not sit far past straight.",
+      "placeholder": true
+    },
+    {
+      "id": "right_knee_not_locked_back",
+      "feature": "right_knee_hyperextension_deg",
+      "max": 5,
+      "finding": "knee_hyperextension",
+      "why": "Knee should not sit far past straight.",
+      "placeholder": true
+    },
+    {
+      "id": "head_level",
+      "feature": "head_tilt_deg",
+      "min": -3,
+      "max": 3,
+      "finding": "head_tilt",
+      "why": "Ears roughly level from the front or back.",
+      "placeholder": true
+    },
+    {
+      "id": "shoulders_level",
+      "feature": "shoulder_tilt_deg",
+      "min": -3,
+      "max": 3,
+      "finding": "shoulder_asymmetry",
+      "why": "Shoulders roughly level from the front or back.",
+      "placeholder": true
+    },
+    {
+      "id": "hips_level",
+      "feature": "pelvic_tilt_deg",
+      "min": -3,
+      "max": 3,
+      "finding": "pelvic_obliquity",
+      "why": "Hip joint centers roughly level. A leg-length or iliac crest check needs palpation, not a camera.",
+      "placeholder": true
+    },
+    {
+      "id": "trunk_centered",
+      "feature": "trunk_lateral_shift_deg",
+      "min": -3.5,
+      "max": 3.5,
+      "finding": "lateral_trunk_shift",
+      "why": "Shoulders centered over the hips from the front or back. An angle so it holds for any body size (Tony, 2026-10-10): 3.5° = the old 0.03 m on the synthetic lifter's ~0.5 m trunk.",
+      "placeholder": true
+    },
+    {
+      "id": "left_knee_aligned",
+      "feature": "left_knee_valgus_deg",
+      "min": -6,
+      "max": 6,
+      "finding": "knee_alignment",
+      "why": "Knee close to the hip-ankle line from the front: + is valgus, - is varus.",
+      "placeholder": true
+    },
+    {
+      "id": "right_knee_aligned",
+      "feature": "right_knee_valgus_deg",
+      "min": -6,
+      "max": 6,
+      "finding": "knee_alignment",
+      "why": "Knee close to the hip-ankle line from the front: + is valgus, - is varus.",
+      "placeholder": true
+    }
+  ]
+}
