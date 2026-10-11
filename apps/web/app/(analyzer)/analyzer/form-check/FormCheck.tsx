@@ -17,11 +17,14 @@ export interface Variation {
   label: string;
 }
 
-/** Same camera set-up as the set session (Tony, 2026-10-09). */
+/** Same camera set-up as the set session (Tony, 2026-10-09), plus tips for a clean recording. */
 const FILMING_TIPS = [
-  "45° behind you, to one side, about 1.5× your height away",
-  "Lens at seated shoulder height, phone level, main back camera (1x)",
-  "Whole body, hands and bar in frame",
+  "45° behind you, off to one side, about 1.5× your height away",
+  "Lens at seated shoulder height, phone level, back camera on the main 1x lens",
+  "Whole body in frame, with your hands and the bar at the top of the rep",
+  "Prop the phone on something steady, or have someone hold it still",
+  "Start recording before the first rep and stop after the last",
+  "Good light helps the tracking",
 ];
 
 export function FormCheck({
@@ -72,6 +75,7 @@ export function FormCheck({
 
       {!video && (
         <section className="space-y-3">
+          <p className="text-sm font-medium text-ink">How to film</p>
           <ul className="space-y-1.5 rounded-card border border-border bg-surface p-3 text-sm text-ink-muted">
             {FILMING_TIPS.map((t) => (
               <li key={t} className="flex gap-2">
