@@ -107,7 +107,7 @@ describe("results screen", () => {
 
 describe("language switch", () => {
   it("switches the page to Chinese", () => {
-    render(<FormCheck variations={[{ id: "wide_overhand", label: "Wide overhand" }]} analyze={() => buildFormReport(report, params)} trackPose={false} />);
+    render(<FormCheck variations={[{ id: "wide_overhand", label: "Wide overhand" }]} analyze={() => buildFormReport(report, params)} analyzeBaseline={vi.fn()} trackPose={false} />);
     fireEvent.click(screen.getByRole("button", { name: "中文" }));
     expect(screen.getByRole("heading", { name: "动作检测 · 高位下拉" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "宽距正握" })).toBeTruthy();

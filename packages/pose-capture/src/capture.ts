@@ -5,7 +5,7 @@ import { createWorkerDetector } from "./detector";
 import type { PoseDetector } from "./detector";
 import { createFrameSmoother, toPoseFrame } from "./frames";
 import type { OneEuroParams } from "./one-euro";
-import { cameraSource, videoFileSource } from "./sources";
+import { cameraSource, imageSource, videoFileSource } from "./sources";
 import type { FrameSource } from "./sources";
 
 export interface CaptureOptions {
@@ -38,7 +38,7 @@ export interface PoseCapture {
    * Starts capture. For an uploaded video this resolves once the whole video is processed; for a camera it
    * resolves once frames are flowing, and capture runs until stop().
    */
-  start(source: HTMLVideoElement | MediaStream): Promise<void>;
+  start(source: HTMLVideoElement | MediaStream | Blob): Promise<void>;
   /** Stops capture and returns everything captured so far. Throws if no body was found in any frame. */
   stop(): PoseSequence;
   /** Frames looked at so far, with or without a body in them. */
@@ -48,7 +48,7 @@ export interface PoseCapture {
 /** Swappable parts, so the loop can be tested without a browser, camera or model. */
 export interface CaptureDeps {
   createDetector?: (options: Required<Pick<CaptureOptions, "model" | "wasmBasePath">> & Pick<CaptureOptions, "modelUrl" | "workerUrl">) => Promise<PoseDetector>;
-  openSource?: (source: HTMLVideoElement | MediaStream, fps: number, signal: AbortSignal) => Promise<FrameSource>;
+  openSource?: (source: HTMLVideoElement | MediaStream | Blob, fps: number, signal: AbortSignal) => Promise<FrameSource>;
 }
 
 export class NoPoseFoundError extends Error {
@@ -69,7 +69,8 @@ export function createPoseCapture(options: CaptureOptions, deps: CaptureDeps = {
   const createDetector =
     deps.createDetector ?? ((o) => createWorkerDetector(o.wasmBasePath, o.modelUrl ?? POSE_MODEL_URLS[o.model], o.workerUrl));
   const openSource =
-    deps.openSource ?? ((s, fps, signal) => (isStream(s) ? cameraSource(s, signal) : videoFileSource(s, fps, signal)));
+    deps.openSource ??
+    ((s, fps, signal) => (s instanceof Blob ? imageSource(s) : isStream(s) ? cameraSource(s, signal) : videoFileSource(s, fps, signal)));
 
   const listeners = new Set<(f: PoseFrame) => void>();
   const frames: PoseFrame[] = [];
@@ -155,4 +156,11 @@ export async function processVideo(video: HTMLVideoElement, options: CaptureOpti
   const capture = createPoseCapture(options, deps);
   await capture.start(video);
   return { sequence: capture.stop(), framesSampled: capture.framesSampled };
+}
+
+/** Finds the body in one still photo (e.g. a posture-check view) and returns it as a one-frame sequence. */
+export async function processImage(image: Blob, options: CaptureOptions, deps?: CaptureDeps) {
+  const capture = createPoseCapture(options, deps);
+  await capture.start(image);
+  return capture.stop();
 }

@@ -10,7 +10,10 @@ import { TrackingPanel } from "../session/TrackingPanel";
 import { usePoseTracking } from "../session/use-pose-tracking";
 import type { TrackingHosting } from "../session/use-pose-tracking";
 import { formatLimit, formatValue, resultsForClaude } from "./form-report";
-import { CHECK_LABELS_ZH, TEXT } from "./i18n";
+import { loadBaseline } from "./baseline";
+import type { AnalyzeBaseline, Baseline, SkeletonLike } from "./baseline";
+import { BASELINE_TEXT, CHECK_LABELS_ZH, TEXT } from "./i18n";
+import { PostureCheck } from "./PostureCheck";
 import type { Lang } from "./i18n";
 import type { CheckView, FormReportView, RepView } from "./form-report";
 
@@ -35,12 +38,15 @@ function initialLang(): Lang {
 export function FormCheck({
   variations,
   analyze,
+  analyzeBaseline,
   trackPose = true,
   hosting,
 }: {
   variations: Variation[];
   /** Tier 1 on a tracked set, for one grip variation. */
-  analyze: (sequence: PoseSequence, variation: string) => FormReportView;
+  analyze: (sequence: PoseSequence, variation: string, skeleton?: SkeletonLike) => FormReportView;
+  /** Posture check → baseline measurements. */
+  analyzeBaseline: AnalyzeBaseline;
   /** Run MediaPipe on the video. Off in tests. */
   trackPose?: boolean;
   /** Where MediaPipe's files come from, for hosts other than the web app. */
@@ -60,6 +66,11 @@ export function FormCheck({
     }
   };
   const t = TEXT[lang];
+  const [mode, setMode] = useState<"check" | "posture">("check");
+  const [baseline, setBaseline] = useState<Baseline | null>(null);
+  // Saved on this phone by an earlier posture check; read after mount like the language.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setBaseline(loadBaseline()), []);
   const [video, setVideo] = useState<{ url: string; name: string; durationSec?: number } | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [showSkeleton, setShowSkeleton] = useState(true);
@@ -70,11 +81,11 @@ export function FormCheck({
   const result = useMemo((): { view: FormReportView } | { error: string } | null => {
     if (tracking.status !== "done") return null;
     try {
-      return { view: analyze(tracking.sequence, variation) };
+      return { view: analyze(tracking.sequence, variation, baseline?.skeleton) };
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
     }
-  }, [tracking, variation, analyze]);
+  }, [tracking, variation, analyze, baseline]);
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
@@ -86,6 +97,19 @@ export function FormCheck({
         <p className="text-sm text-ink-muted">{t.intro}</p>
       </header>
 
+      {mode === "posture" && (
+        <PostureCheck
+          lang={lang}
+          analyze={analyzeBaseline}
+          hosting={hosting}
+          onSaved={setBaseline}
+          onCancel={() => setMode("check")}
+        />
+      )}
+
+      {mode === "check" && <BaselineCard baseline={baseline} lang={lang} onStart={() => setMode("posture")} />}
+
+      {mode === "check" && (
       <div role="group" aria-label={t.grip} className="flex flex-wrap gap-2">
         {variations.map((v) => (
           <Chip key={v.id} on={v.id === variation} onClick={() => setVariation(v.id)}>
@@ -93,8 +117,9 @@ export function FormCheck({
           </Chip>
         ))}
       </div>
+      )}
 
-      {!video && (
+      {mode === "check" && !video && (
         <section className="space-y-3">
           <p className="text-sm font-medium text-ink">{t.howToFilm}</p>
           <ul className="space-y-1.5 rounded-card border border-border bg-surface p-3 text-sm text-ink-muted">
@@ -109,7 +134,7 @@ export function FormCheck({
         </section>
       )}
 
-      {video && tracking.status !== "done" && (
+      {mode === "check" && video && tracking.status !== "done" && (
         <TrackingPanel
           tracking={tracking}
           showSkeleton={showSkeleton}
@@ -120,13 +145,13 @@ export function FormCheck({
         />
       )}
 
-      {video && tracking.status === "done" && result && "error" in result && (
+      {mode === "check" && video && tracking.status === "done" && result && "error" in result && (
         <p role="alert" className="rounded-card border border-severity-major/40 bg-surface p-3 text-sm text-ink">
           {t.checksFailed(result.error)}
         </p>
       )}
 
-      {video && tracking.status === "done" && result && "view" in result && (
+      {mode === "check" && video && tracking.status === "done" && result && "view" in result && (
         <Results
           key={`${video.url}-${variation}`}
           view={result.view}
@@ -142,11 +167,27 @@ export function FormCheck({
         />
       )}
 
-      {video && (
+      {mode === "check" && video && (
         <ActionBar>
           <VideoPicker compact label={t.another} onFile={(f) => setVideo({ url: URL.createObjectURL(f), name: f.name })} />
         </ActionBar>
       )}
+    </div>
+  );
+}
+
+function BaselineCard({ baseline, lang, onStart }: { baseline: Baseline | null; lang: Lang; onStart: () => void }) {
+  const t = BASELINE_TEXT[lang];
+  const date = baseline ? new Date(baseline.savedAt).toLocaleDateString(lang === "zh" ? "zh-CN" : undefined) : "";
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-surface p-3">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-ink">{t.cardTitle}</p>
+        <p className="text-xs text-ink-muted">{baseline ? `✓ ${t.savedOn(date)} · ${t.using}` : t.notDone}</p>
+      </div>
+      <Button variant={baseline ? "ghost" : "primary"} className="shrink-0 px-3 py-1.5" onClick={onStart}>
+        {baseline ? t.redo : t.start}
+      </Button>
     </div>
   );
 }

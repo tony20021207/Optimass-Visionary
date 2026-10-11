@@ -92,3 +92,13 @@ export async function cameraSource(stream: MediaStream, signal: AbortSignal): Pr
   }
   return { kind: "camera", width: video.videoWidth, height: video.videoHeight, fps, frames: frames() };
 }
+
+/** A still photo as a one-frame source (posture check). Orientation from the photo's EXIF is applied. */
+export async function imageSource(image: Blob): Promise<FrameSource> {
+  const bitmap = await createImageBitmap(image, { imageOrientation: "from-image" });
+  const { width, height } = bitmap;
+  async function* frames() {
+    yield { index: 0, timestampMs: 0, image: bitmap };
+  }
+  return { kind: "upload", width, height, fps: 1, total: 1, frames: frames() };
+}

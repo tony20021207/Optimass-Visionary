@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { POSE_LANDMARK, POSE_LANDMARK_COUNT, PoseFrame, PoseSequence } from "@optimass/types";
 import { squatSagittal2Reps } from "@optimass/types/fixtures";
-import { NoPoseFoundError, OneEuroFilter, createFrameSmoother, createPoseCapture, lowVisibilityLandmarks, toPoseFrame, trackingQuality } from "./index";
+import { NoPoseFoundError, OneEuroFilter, processImage, createFrameSmoother, createPoseCapture, lowVisibilityLandmarks, toPoseFrame, trackingQuality } from "./index";
 import type { CaptureDeps, PoseDetector, RawPose, SourceFrame } from "./index";
 
 /** Deterministic noise so tests don't flake. */
@@ -121,6 +121,13 @@ describe("createPoseCapture", () => {
     expect(progress.at(-1)).toBe(1);
     expect(capture.framesSampled).toBe(20);
     expect(closed()).toBe(true);
+  });
+
+  it("reads a still photo as a one-frame sequence", async () => {
+    const { deps } = scripted([rawPose(0.4)], 1);
+    const seq = await processImage(new Blob(), options, deps);
+    expect(seq.frames).toHaveLength(1);
+    expect(PoseSequence.parse(seq).frames[0]!.timestampMs).toBe(0);
   });
 
   it("says so when no body was found anywhere", async () => {

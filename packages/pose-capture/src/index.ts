@@ -1,6 +1,6 @@
 export const MODULE = "M4" as const;
 
-export { createPoseCapture, processVideo, NoPoseFoundError } from "./capture";
+export { createPoseCapture, processImage, processVideo, NoPoseFoundError } from "./capture";
 export type { CaptureDeps, CaptureOptions, PoseCapture } from "./capture";
 export { DEFAULT_MIN_VISIBILITY, DEFAULT_SAMPLE_FPS, DEFAULT_WASM_BASE_PATH, POSE_MODEL_URLS, WASM_FILES } from "./config";
 export type { PoseModel } from "./config";
