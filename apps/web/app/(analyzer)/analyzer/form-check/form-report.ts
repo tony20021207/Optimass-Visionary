@@ -118,21 +118,25 @@ export function unitOf(feature: string): string {
 }
 
 /** A value rounded for reading: whole degrees, two decimals for small numbers. */
-export function formatValue(value: number, unit: string): string {
-  if (Number.isNaN(value)) return "not measurable";
+export function formatValue(value: number, unit: string, lang: "en" | "zh" = "en"): string {
+  if (Number.isNaN(value)) return lang === "zh" ? "无法测量" : "not measurable";
   const abs = Math.abs(value);
   const digits = unit === "°" || unit === "°/s" || unit === "°/s²" || unit === "%" ? (abs < 10 ? 1 : 0) : abs < 1 ? 2 : 1;
   const n = value.toFixed(digits);
-  return unit === "°" ? `${n}°` : unit ? `${n} ${unit}` : n;
+  const shown = lang === "zh" ? (UNITS_ZH[unit] ?? unit) : unit;
+  return unit === "°" ? `${n}°` : shown ? `${n} ${shown}` : n;
 }
 
+const UNITS_ZH: Record<string, string> = { "arm lengths": "臂长", "arm lengths/s²": "臂长/s²", "trunk lengths": "躯干长", "× shoulder width": "× 肩宽" };
+
 /** "max 15°", "10–18°", "min −5°". */
-export function formatLimit(c: Pick<CheckView, "min" | "max" | "unit">): string {
-  const f = (v: number) => formatValue(v, c.unit);
-  if (c.min !== undefined && c.max !== undefined) return `${f(c.min)} to ${f(c.max)}`;
-  if (c.max !== undefined) return `at most ${f(c.max)}`;
-  if (c.min !== undefined) return `at least ${f(c.min)}`;
-  return "measured only";
+export function formatLimit(c: Pick<CheckView, "min" | "max" | "unit">, lang: "en" | "zh" = "en"): string {
+  const f = (v: number) => formatValue(v, c.unit, lang);
+  const zh = lang === "zh";
+  if (c.min !== undefined && c.max !== undefined) return zh ? `${f(c.min)} 至 ${f(c.max)}` : `${f(c.min)} to ${f(c.max)}`;
+  if (c.max !== undefined) return zh ? `不超过 ${f(c.max)}` : `at most ${f(c.max)}`;
+  if (c.min !== undefined) return zh ? `至少 ${f(c.min)}` : `at least ${f(c.min)}`;
+  return zh ? "仅测量" : "measured only";
 }
 
 const ORDER: Record<CheckStatus, number> = { fail: 0, pass: 1, info: 2 };

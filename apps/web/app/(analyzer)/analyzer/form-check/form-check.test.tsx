@@ -2,7 +2,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { squatSagittal2Reps } from "@optimass/types/fixtures";
 import { buildFormReport, formatLimit, formatValue, resultsForClaude, unitOf } from "./form-report";
-import { Results } from "./FormCheck";
+import { FormCheck, Results } from "./FormCheck";
 
 beforeAll(() => {
   globalThis.ResizeObserver ??= class {
@@ -102,5 +102,34 @@ describe("results screen", () => {
     show();
     fireEvent.click(screen.getByRole("tab", { name: /Rep 2/ }));
     expect(screen.getByText("Every check passed on this rep.")).toBeTruthy();
+  });
+});
+
+describe("language switch", () => {
+  it("switches the page to Chinese", () => {
+    render(<FormCheck variations={[{ id: "wide_overhand", label: "Wide overhand" }]} analyze={() => buildFormReport(report, params)} trackPose={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "中文" }));
+    expect(screen.getByRole("heading", { name: "动作检测 · 高位下拉" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "宽距正握" })).toBeTruthy();
+    expect(screen.getByText("录制或选择视频")).toBeTruthy();
+  });
+
+  it("shows results in Chinese", () => {
+    render(
+      <Results
+        view={buildFormReport(report, params)}
+        sequence={squatSagittal2Reps}
+        videoUrl="blob:set"
+        bodyFound={0.97}
+        hardToSee={[]}
+        showSkeleton={false}
+        onShowSkeleton={vi.fn()}
+        copyText={() => ""}
+        onDownload={vi.fn()}
+        lang="zh"
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "2 次 · 1 个动作错误" })).toBeTruthy();
+    expect(within(screen.getByRole("list", { name: "第 1 次的动作错误" })).getByText("标准：不超过 24°")).toBeTruthy();
   });
 });
