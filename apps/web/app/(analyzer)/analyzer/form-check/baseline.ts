@@ -22,12 +22,20 @@ export interface PostureResult {
   finding?: string;
 }
 
+/** Resting clavicle position per side, in degrees (Tier 1's PulldownScapulaRest). The good rep starts from it. */
+export interface ScapulaRestLike {
+  left: { elevationDeg: number; protractionDeg: number };
+  right: { elevationDeg: number; protractionDeg: number };
+}
+
 export interface Baseline {
   version: 1;
   savedAt: string;
   heightCm?: number;
   skeleton: SkeletonLike;
   posture: PostureResult[];
+  /** Missing on baselines saved before the good-rep comparison (2026-10-11). */
+  scapulaRest?: ScapulaRestLike;
 }
 
 export type AnalyzeBaseline = (captures: { view: PostureViewId; sequence: PoseSequence }[], heightCm?: number) => Omit<Baseline, "version" | "savedAt">;

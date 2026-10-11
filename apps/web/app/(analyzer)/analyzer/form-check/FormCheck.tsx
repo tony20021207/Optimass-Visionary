@@ -9,13 +9,14 @@ import { RepVideo } from "../session/RepVideo";
 import { TrackingPanel } from "../session/TrackingPanel";
 import { usePoseTracking } from "../session/use-pose-tracking";
 import type { TrackingHosting } from "../session/use-pose-tracking";
-import { formatLimit, formatValue, resultsForClaude } from "./form-report";
+import { formatDiff, formatLimit, formatValue, resultsForClaude } from "./form-report";
 import { loadBaseline } from "./baseline";
-import type { AnalyzeBaseline, Baseline, SkeletonLike } from "./baseline";
-import { BASELINE_TEXT, CHECK_LABELS_ZH, TEXT } from "./i18n";
+import type { AnalyzeBaseline, Baseline } from "./baseline";
+import type { AnalyzeContext, FilmedSide } from "./analyze";
+import { BASELINE_TEXT, CHECK_LABELS_ZH, COMPARE_TEXT, TEXT } from "./i18n";
 import { PostureCheck } from "./PostureCheck";
 import type { Lang } from "./i18n";
-import type { CheckView, FormReportView, RepView } from "./form-report";
+import type { CheckView, ComparisonView, FormReportView, RepView } from "./form-report";
 
 export interface Variation {
   id: string;
@@ -23,6 +24,17 @@ export interface Variation {
 }
 
 const LANG_KEY = "optimass.lang";
+const SIDE_KEY = "optimass.filmedSide";
+
+function savedSide(): FilmedSide {
+  try {
+    const s = localStorage.getItem(SIDE_KEY);
+    if (s === "left" || s === "right" || s === "both") return s;
+  } catch {
+    // Storage can be blocked; fall through.
+  }
+  return "both";
+}
 
 /** The language picked last time on this device, else the phone's own language. */
 function initialLang(): Lang {
@@ -43,8 +55,8 @@ export function FormCheck({
   hosting,
 }: {
   variations: Variation[];
-  /** Tier 1 on a tracked set, for one grip variation. */
-  analyze: (sequence: PoseSequence, variation: string, skeleton?: SkeletonLike) => FormReportView;
+  /** Tier 1 on a tracked set, for one grip variation, compared to the user's good rep. */
+  analyze: (sequence: PoseSequence, variation: string, ctx: AnalyzeContext) => FormReportView;
   /** Posture check → baseline measurements. */
   analyzeBaseline: AnalyzeBaseline;
   /** Run MediaPipe on the video. Off in tests. */
@@ -66,6 +78,18 @@ export function FormCheck({
     }
   };
   const t = TEXT[lang];
+  const ct = COMPARE_TEXT[lang];
+  const [side, setSideState] = useState<FilmedSide>("both");
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setSideState(savedSide()), []);
+  const setSide = (s: FilmedSide) => {
+    setSideState(s);
+    try {
+      localStorage.setItem(SIDE_KEY, s);
+    } catch {
+      // Not remembered; fine.
+    }
+  };
   const [mode, setMode] = useState<"check" | "posture">("check");
   const [baseline, setBaseline] = useState<Baseline | null>(null);
   // Saved on this phone by an earlier posture check; read after mount like the language.
@@ -81,11 +105,11 @@ export function FormCheck({
   const result = useMemo((): { view: FormReportView } | { error: string } | null => {
     if (tracking.status !== "done") return null;
     try {
-      return { view: analyze(tracking.sequence, variation, baseline?.skeleton) };
+      return { view: analyze(tracking.sequence, variation, { skeleton: baseline?.skeleton, scapulaRest: baseline?.scapulaRest, side }) };
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
     }
-  }, [tracking, variation, analyze, baseline]);
+  }, [tracking, variation, analyze, baseline, side]);
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
@@ -117,6 +141,20 @@ export function FormCheck({
           </Chip>
         ))}
       </div>
+      )}
+
+      {mode === "check" && (
+        <div className="space-y-1.5">
+          <p className="text-sm font-medium text-ink">{ct.sideQuestion}</p>
+          <div role="group" aria-label={ct.sideQuestion} className="flex flex-wrap gap-2">
+            {(["left", "right", "both"] as const).map((s) => (
+              <Chip key={s} on={s === side} onClick={() => setSide(s)}>
+                {ct.sides[s]}
+              </Chip>
+            ))}
+          </div>
+          <p className="text-xs text-ink-muted">{ct.sideNote}</p>
+        </div>
       )}
 
       {mode === "check" && !video && (
@@ -163,7 +201,9 @@ export function FormCheck({
           onShowSkeleton={setShowSkeleton}
           lang={lang}
           onDownload={() => downloadPoseData(tracking.sequence, video.name)}
-          copyText={() => resultsForClaude(result.view, variation, { name: video.name, durationSec: tracking.sequence.frames.at(-1)!.timestampMs / 1000 })}
+          copyText={() =>
+            resultsForClaude(result.view, variation, { name: video.name, durationSec: tracking.sequence.frames.at(-1)!.timestampMs / 1000 }, { side })
+          }
         />
       )}
 
@@ -364,6 +404,11 @@ export function Results({
             <span className={cn("text-xs", i === selected ? "text-white/85" : r.fails ? "text-severity-major" : "text-ink-muted")}>
               {r.fails === 0 ? t.good : t.errors(r.fails)}
             </span>
+            {r.comparison && (
+              <span className={cn("text-xs tabular-nums", i === selected ? "text-white/85" : "text-ink-muted")}>
+                {COMPARE_TEXT[lang].tabScore(r.comparison.score)}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -385,6 +430,7 @@ export function Results({
             <input type="checkbox" className="size-4 accent-brand-600" checked={showSkeleton} onChange={(e) => onShowSkeleton(e.target.checked)} />
             {t.showSkeleton}
           </label>
+          {rep.comparison && <GoodRepComparison comparison={rep.comparison} personal={view.compare?.personal ?? false} lang={lang} />}
           <RepChecks rep={rep} lang={lang} label={label} />
         </div>
       )}
@@ -398,6 +444,73 @@ export function Results({
         </Button>
         {copied && <span className="w-full text-sm text-ink-muted">{t.copied}</span>}
       </div>
+    </section>
+  );
+}
+
+/** The worst few; the rest are in the table. */
+const MAX_OFF_SHOWN = 5;
+
+function GoodRepComparison({ comparison: c, personal, lang }: { comparison: ComparisonView; personal: boolean; lang: Lang }) {
+  const t = COMPARE_TEXT[lang];
+  const joints = c.keys[0] ? Object.keys(c.keys[0].joints) : [];
+  return (
+    <section className="space-y-2 rounded-card border border-border bg-surface p-3" aria-label={t.title}>
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="text-sm font-semibold text-ink">{t.title}</h3>
+        <span className={cn("shrink-0 text-lg font-semibold tabular-nums", c.off.length ? "text-severity-major" : "text-ink")}>{t.score(c.score)}</span>
+      </div>
+      <p className="text-xs text-ink-muted">{personal ? t.personal : t.standard}</p>
+      {c.off.length === 0 ? (
+        <p className="text-sm text-ink">{t.noneOff}</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {c.off.slice(0, MAX_OFF_SHOWN).map((o) => (
+            <li key={`${o.key}-${o.joint}`} className="rounded-card border border-severity-major/40 p-2 text-sm">
+              <p className="font-medium text-ink">{t.offAt(t.joints[o.joint] ?? o.joint, t.keysLong[o.key] ?? o.key)}</p>
+              <p className="text-xs tabular-nums text-ink-muted">
+                {t.vsGood(formatDiff(o.diff, o.unit, lang), formatDiff(o.tolerance, o.unit, lang).replace(/^\+/, ""))}
+              </p>
+            </li>
+          ))}
+          {c.off.length > MAX_OFF_SHOWN && <li className="text-xs text-ink-muted">{t.more(c.off.length - MAX_OFF_SHOWN)}</li>}
+        </ul>
+      )}
+      <details>
+        <summary className="cursor-pointer text-sm font-medium text-ink">{t.allJoints}</summary>
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-xs tabular-nums">
+            <thead>
+              <tr className="text-ink-muted">
+                <th className="py-1 pr-2 text-left font-medium" />
+                {c.keys.map((k) => (
+                  <th key={k.key} className="px-1 py-1 text-right font-medium">
+                    {t.keys[k.key]}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {joints.map((j) => (
+                <tr key={j} className="border-t border-border">
+                  <th scope="row" className="py-1 pr-2 text-left font-normal text-ink-muted">
+                    {t.joints[j] ?? j}
+                  </th>
+                  {c.keys.map((k) => {
+                    const v = k.joints[j]!;
+                    return (
+                      <td key={k.key} className={cn("px-1 py-1 text-right", v.status === "off" ? "font-semibold text-severity-major" : "text-ink")}>
+                        {v.status === "unmeasured" ? "–" : formatDiff(v.diff, v.unit, lang)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-xs text-ink-muted">{t.sign}</p>
+      </details>
     </section>
   );
 }

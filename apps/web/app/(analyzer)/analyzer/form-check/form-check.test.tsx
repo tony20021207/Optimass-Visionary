@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { squatSagittal2Reps } from "@optimass/types/fixtures";
-import { buildFormReport, formatLimit, formatValue, resultsForClaude, unitOf } from "./form-report";
+import { buildFormReport, formatDiff, formatLimit, formatValue, resultsForClaude, unitOf } from "./form-report";
 import { FormCheck, Results } from "./FormCheck";
 
 beforeAll(() => {
@@ -102,6 +102,37 @@ describe("results screen", () => {
     show();
     fireEvent.click(screen.getByRole("tab", { name: /Rep 2/ }));
     expect(screen.getByText("Every check passed on this rep.")).toBeTruthy();
+  });
+});
+
+describe("good-rep comparison", () => {
+  const joint = (diff: number, tolerance: number, unit = "deg") => ({ measured: diff, ideal: 0, diff, tolerance, unit, status: Math.abs(diff) > tolerance ? ("off" as const) : ("ok" as const) });
+  const keys = (["top", "third1", "third2", "bottom"] as const).map((key, i) => ({
+    key,
+    atMs: i * 500,
+    joints: { elbow_flexion: joint(key === "third1" ? 14 : 2, 10), scapular_elevation: joint(0.01, 0.06, "x shoulder width") },
+  }));
+  const compared = {
+    reps: [{ ...report.reps[0]!, comparison: { score: 81, off: [{ key: "third1" as const, joint: "elbow_flexion", diff: 14, tolerance: 10, unit: "deg" }], keys } }],
+  };
+  const view = buildFormReport(compared, params, { personal: true, compareParams: { version: "0.1.0-placeholder", reviewedBy: null } });
+
+  it("shows the rep's score and the joints off the good rep", () => {
+    render(
+      <Results view={view} sequence={squatSagittal2Reps} videoUrl="blob:set" bodyFound={1} hardToSee={[]} showSkeleton={false} onShowSkeleton={vi.fn()} copyText={() => ""} onDownload={vi.fn()} />,
+    );
+    expect(screen.getByRole("tab", { name: /Score 81/ })).toBeTruthy();
+    const box = screen.getByRole("region", { name: "Compared with your good rep" });
+    expect(within(box).getByText("81/100")).toBeTruthy();
+    expect(within(box).getByText("Elbow flexion at ⅓ of the pull")).toBeTruthy();
+    expect(within(box).getByText("+14° vs good rep · allowed ±10°")).toBeTruthy();
+  });
+
+  it("formats differences and copies the score for Claude", () => {
+    expect(formatDiff(-0.084, "x shoulder width")).toBe("−0.08 × shoulder width");
+    const parsed = JSON.parse(resultsForClaude(view, "wide_overhand", { name: "set.mp4" }, { side: "left" }));
+    expect(parsed.goodRep).toMatchObject({ personalBones: true, side: "left" });
+    expect(parsed.reps[0].goodRep).toMatchObject({ score: 81, keys: { third1: { elbow_flexion: 14 } } });
   });
 });
 

@@ -12,8 +12,26 @@ interface CheckResultLike {
   status: CheckStatus;
   fault?: string;
 }
+/** Tier 1's PulldownRepComparison (pulldown/compare.ts). */
+export type CompareKey = "top" | "third1" | "third2" | "bottom";
+export interface JointCompareView {
+  measured: number;
+  ideal: number;
+  /** measured − ideal; + = more of the named motion. */
+  diff: number;
+  tolerance: number;
+  unit: string;
+  status: "ok" | "off" | "unmeasured";
+}
+export interface ComparisonView {
+  /** 0–100, closeness to the good rep (placeholder formula). */
+  score: number;
+  /** Joints past tolerance, worst first. */
+  off: { key: CompareKey; joint: string; diff: number; tolerance: number; unit: string }[];
+  keys: { key: CompareKey; atMs: number; joints: Record<string, JointCompareView> }[];
+}
 interface PulldownReportLike {
-  reps: { rep: { repIndex: number; startMs: number; endMs: number }; checks: CheckResultLike[] }[];
+  reps: { rep: { repIndex: number; startMs: number; endMs: number }; checks: CheckResultLike[]; comparison?: ComparisonView }[];
 }
 interface ParamsLike {
   version: string;
@@ -39,12 +57,20 @@ export interface RepView {
   endSec: number;
   checks: CheckView[];
   fails: number;
+  comparison?: ComparisonView;
 }
 
 export interface FormReportView {
   reps: RepView[];
   paramsVersion: string;
   reviewed: boolean;
+  /** Set when reps were compared to the good rep. */
+  compare?: {
+    /** The good rep was built on the user's posture-check bones (else Tier 1's default body). */
+    personal: boolean;
+    version: string;
+    reviewed: boolean;
+  };
 }
 
 /** Plain-language names for Tier 1's checks. Ids not listed fall back to the id with spaces. */
@@ -141,30 +167,46 @@ export function formatLimit(c: Pick<CheckView, "min" | "max" | "unit">, lang: "e
 
 const ORDER: Record<CheckStatus, number> = { fail: 0, pass: 1, info: 2 };
 
-export function buildFormReport(report: PulldownReportLike, params: ParamsLike): FormReportView {
+export function buildFormReport(
+  report: PulldownReportLike,
+  params: ParamsLike,
+  compare?: { personal: boolean; compareParams: { version: string; reviewedBy: string | null } },
+): FormReportView {
   const why = new Map(params.checks.map((c) => [c.id, c.why]));
+  const compared = compare && report.reps.some((r) => r.comparison);
   return {
     paramsVersion: params.version,
     reviewed: params.reviewedBy !== null,
-    reps: report.reps.map(({ rep, checks }) => {
+    ...(compared && {
+      compare: { personal: compare.personal, version: compare.compareParams.version, reviewed: compare.compareParams.reviewedBy !== null },
+    }),
+    reps: report.reps.map(({ rep, checks, comparison }) => {
       const views = checks
         .map((c): CheckView => {
           const unit = unitOf(c.feature);
           return { id: c.id, label: label(c.id), status: c.status, value: c.value, min: c.min, max: c.max, unit, fault: c.fault, why: why.get(c.id) };
         })
         .sort((a, b) => ORDER[a.status] - ORDER[b.status]);
-      return { repIndex: rep.repIndex, startSec: rep.startMs / 1000, endSec: rep.endMs / 1000, checks: views, fails: views.filter((c) => c.status === "fail").length };
+      return {
+        repIndex: rep.repIndex,
+        startSec: rep.startMs / 1000,
+        endSec: rep.endMs / 1000,
+        checks: views,
+        fails: views.filter((c) => c.status === "fail").length,
+        ...(comparison && { comparison }),
+      };
     }),
   };
 }
 
 /** Compact JSON for pasting into the Tier 1 thread when tuning limits. */
-export function resultsForClaude(view: FormReportView, variation: string, video: { name: string; durationSec?: number }) {
+export function resultsForClaude(view: FormReportView, variation: string, video: { name: string; durationSec?: number }, extra?: { side?: string }) {
   return JSON.stringify(
     {
       kind: "optimass-form-check",
       variation,
       paramsVersion: view.paramsVersion,
+      ...(view.compare && { goodRep: { personalBones: view.compare.personal, tolerancesVersion: view.compare.version, side: extra?.side } }),
       video,
       reps: view.reps.map((r) => ({
         rep: r.repIndex + 1,
@@ -172,9 +214,33 @@ export function resultsForClaude(view: FormReportView, variation: string, video:
         endSec: +r.endSec.toFixed(2),
         failed: r.checks.filter((c) => c.status === "fail").map((c) => c.id),
         values: Object.fromEntries(r.checks.map((c) => [c.id, Number.isNaN(c.value) ? null : +c.value.toFixed(3)])),
+        ...(r.comparison && {
+          goodRep: {
+            score: r.comparison.score,
+            off: r.comparison.off.map((o) => `${o.joint}@${o.key} ${o.diff > 0 ? "+" : ""}${+o.diff.toFixed(3)} (tol ${o.tolerance})`),
+            keys: Object.fromEntries(
+              r.comparison.keys.map((k) => [
+                k.key,
+                Object.fromEntries(Object.entries(k.joints).map(([j, v]) => [j, Number.isFinite(v.diff) ? +v.diff.toFixed(3) : null])),
+              ]),
+            ),
+          },
+        }),
       })),
     },
     null,
     1,
   );
 }
+
+/** Joint value for reading: degrees whole, ratios to two decimals. "+12°", "−0.08 × shoulder width". */
+export function formatDiff(diff: number, unit: string, lang: "en" | "zh" = "en"): string {
+  if (!Number.isFinite(diff)) return lang === "zh" ? "无法测量" : "not measurable";
+  const deg = unit === "deg";
+  const n = deg ? Math.round(diff) : +diff.toFixed(2);
+  const sign = n > 0 ? "+" : n < 0 ? "−" : "±";
+  const u = deg ? "°" : ` ${lang === "zh" ? (RATIO_UNITS_ZH[unit] ?? unit) : unit.replace(/^x /, "× ")}`;
+  return `${sign}${Math.abs(n)}${u}`;
+}
+
+const RATIO_UNITS_ZH: Record<string, string> = { "x shoulder width": "× 肩宽", "x trunk length": "× 躯干长" };
