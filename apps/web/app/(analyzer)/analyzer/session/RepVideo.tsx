@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { MouseEvent, RefObject } from "react";
+import type { MouseEvent, ReactNode, RefObject } from "react";
 import { boxToFrame, frameToBox } from "./video-geometry";
 
 export interface FramePoint {
@@ -47,6 +47,7 @@ export function RepVideo({
   placingLabel,
   onPlace,
   onCancelPlacing,
+  overlay,
 }: {
   videoRef: RefObject<HTMLVideoElement | null>;
   url: string;
@@ -56,6 +57,8 @@ export function RepVideo({
   placingLabel: string;
   onPlace: (point: FramePoint | undefined, timeSec: number) => void;
   onCancelPlacing: () => void;
+  /** Drawn over the video, under the pins (e.g. the tracked skeleton). */
+  overlay?: ReactNode;
 }) {
   const [now, setNow] = useState(clip?.windows[0]?.startSec ?? 0);
   const [size, setSize] = useState<VideoSize | null>(null);
@@ -111,11 +114,12 @@ export function RepVideo({
         controls={!placing}
         playsInline
         muted
-        className="max-h-[45vh] w-full rounded-lg bg-black"
+        className="block max-h-[45vh] w-full rounded-lg bg-black"
         onTimeUpdate={(e) => keepInClip(e.currentTarget)}
         onSeeked={(e) => keepInClip(e.currentTarget)}
         aria-label={clip?.label ?? "Your set video"}
       />
+      {overlay}
       {placing && (
         <div
           role="button"

@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { Card, Panel } from "@optimass/ui";
 
-// Lane L3 (M8). The full analyzer (skeleton overlay, rep timeline) is still to come; the set session is live.
+// Lane L3 (M8). The form check (Tier 1) and the set session are live; Tiers 2-3 in the report are still to come.
 export default function AnalyzerPage() {
   return (
     <div className="space-y-4">
+      <Card title="Lat pulldown · form check">
+        <p className="mb-3 text-sm text-ink-muted">Film one set and see every rep checked against your good-rep standard (Tier 1).</p>
+        <Link href="/analyzer/form-check" className="text-sm font-medium text-brand-700">
+          Check my form
+        </Link>
+      </Card>
       <Card title="Lat pulldown · 3-set session">
         <p className="mb-3 text-sm text-ink-muted">
           Film a set, tell us what you felt, and get form and feel cues for the next set. Three sets in total.

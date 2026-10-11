@@ -54,6 +54,9 @@ export class NoPoseFoundError extends Error {
   }
 }
 
+// crypto.randomUUID only exists on https/localhost; a phone testing against a dev server over the LAN has neither.
+const newId = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `seq-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
 const isStream = (s: unknown): s is MediaStream => typeof MediaStream !== "undefined" && s instanceof MediaStream;
 
 export function createPoseCapture(options: CaptureOptions, deps: CaptureDeps = {}): PoseCapture {
@@ -126,7 +129,7 @@ export function createPoseCapture(options: CaptureOptions, deps: CaptureDeps = {
       abort.abort();
       if (!meta || frames.length === 0) throw new NoPoseFoundError();
       return {
-        id: crypto.randomUUID(),
+        id: newId(),
         exerciseId: options.exerciseId,
         cameraView: options.cameraView,
         fps: meta.fps,

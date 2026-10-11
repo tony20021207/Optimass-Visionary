@@ -64,7 +64,7 @@ export function DiscomfortMarker({
         placing={placing}
         placingLabel="Tap where you felt discomfort"
         onPlace={(point, timeSec) => {
-          setDraft({ id: crypto.randomUUID(), timeSec, point, note: "" });
+          setDraft({ id: `pain-${Date.now()}-${Math.random().toString(36).slice(2)}`, timeSec, point, note: "" });
           setPlacing(false);
         }}
         onCancelPlacing={() => setPlacing(false)}
