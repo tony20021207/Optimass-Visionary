@@ -91,6 +91,13 @@ Kinematics: joint and segment angles, angular velocity, rep segmentation, tempo,
   (`shoulder_rotation_bottom_deg`, from `*_shoulder_rotation_deg`: forearm around the upper arm, same zero as
   pulldownArmOnBar). Tony's baselines already sit internally rotated at the bottom (wide ~-52°), so that check bounds how
   much more. Closed chain knock-ons (bar path, forearm line) are expected and listed in the tests.
+- Good-rep comparison (Tony, 2026-10-11; `compare.ts`): `pulldownIdeal({ setup | profile, skeleton, scapulaRest, side })`
+  renders the variation's baseline on the user's posture-check bones without noise and measures it through the same
+  pipeline; `analyzePulldown(seq, params, { skeleton, compare: {...} })` then gives each rep `comparison` (per joint at
+  Top / ⅓ / ⅔ / Bottom: measured, ideal, diff, ok/off/unmeasured; `off` list; 0-100 score). ⅓ and ⅔ are matched by bar
+  travel, not time, so pacing doesn't count twice. Top = highest bar in the second before the pull. Scapular items are
+  proxies (ear gap, hip-to-ear line). Tolerances and score formula: `ideal-compare.params.json`, PLACEHOLDER.
+  Known: the wide-grip lockout fault only reaches ~6° at the top in the simulation (closed chain), so it isn't flagged.
 - `pnpm --filter @optimass/kinematics pulldown:report` prints the feature table for every synthetic variant.
 
 ## Capture protocol (decided by Tony, 2026-10-07)
